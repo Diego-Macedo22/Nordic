@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reinos de Aldeia - Beta</title>
+<style>
+:root{--bg:#2b2213;--panel:#3b2f1c;--panel2:#4a3c24;--gold:#d9b458;--text:#eee0c0;--good:#7fbf5a;--bad:#c25c5c;--accent:#8a6d2f;
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,serif;font-size:14px}
+header{background:var(--panel2);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;border-bottom:2px solid var(--accent)}
+header h1{font-size:16px;margin:0;color:var(--gold);flex:1 1 100%}
+.settings-gear{flex:0 0 auto;background:var(--panel);color:var(--gold);border:1px solid var(--accent);padding:5px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;margin-right:auto}
+.settings-gear:hover{background:var(--accent);color:#2b2213}
+.res{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;flex:1 1 100%}
+.res span b{color:var(--gold)}
+nav{display:flex;gap:6px;padding:8px;background:var(--panel);flex-wrap:wrap;overflow-x:auto}
+nav button{background:var(--panel2);color:var(--text);border:1px solid var(--accent);padding:6px 12px;border-radius:4px;cursor:pointer;font-family:inherit}
+nav button.active{background:var(--gold);color:#2b2213;font-weight:bold}
+main{padding:12px;max-width:900px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--accent);border-radius:6px;padding:10px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #4a3c2440}
+.row:last-child{border-bottom:none}
+button.act{background:var(--accent);color:var(--text);border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px}
+button.act:disabled{opacity:.4;cursor:not-allowed}
+button.act.lang-active{background:var(--gold);color:#2b2213;font-weight:bold}
+button.skip{background:#5a4a2a;font-size:11px;padding:4px 8px}
+.bar{width:100%;background:#1e1810;border-radius:4px;height:8px;overflow:hidden;margin-top:4px}
+.bar>div{background:var(--good);height:100%}
+small{color:#c9b98a}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+h2{color:var(--gold);font-size:15px;margin:4px 0 10px}
+.report{border-left:4px solid var(--good);padding:6px 10px;margin-bottom:8px;background:var(--panel2);border-radius:4px}
+.report.lost{border-left-color:var(--bad)}
+input[type=number]{width:70px;background:#1e1810;color:var(--text);border:1px solid var(--accent);border-radius:4px;padding:4px}
+.tag{font-size:11px;color:#c9b98a}
+.login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#3b2f1c 0%,#1e1810 100%);z-index:20;padding:20px;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.login-card{background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:22px;max-width:340px;width:100%;text-align:center}
+.login-card h1{color:var(--gold);margin:0 0 6px;font-size:20px}
+.login-card p{color:#c9b98a;font-size:13px;margin:0 0 14px}
+.login-card input[type=text]{width:100%;background:#1e1810;color:var(--text);border:1px solid var(--accent);border-radius:4px;padding:8px;font-family:inherit;font-size:14px;margin-bottom:10px}
+.login-card button.act{width:100%;padding:9px;font-size:13px}
+.profile-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
+.profile-list button{background:var(--panel2);color:var(--text);border:1px solid var(--accent);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px}
+.exit-btn{background:#5a2020;color:var(--text);border:1px solid #8a3030;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;white-space:nowrap}
+.profile-tag{font-size:12px;color:var(--gold);white-space:nowrap}
+.attack-banner{background:var(--bad);color:#fff;text-align:center;padding:8px 12px;font-size:13px;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,.4);padding-top:calc(8px + env(safe-area-inset-top,0px))}
+.attack-banner.imminent{background:#7a1010;animation:pulseBanner 1s infinite}
+@keyframes pulseBanner{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ---- Configurações (settings modal) ---- */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(10,8,4,.72);z-index:50;align-items:center;justify-content:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.settings-panel{background:var(--panel);border:2px solid var(--accent);border-radius:10px;width:min(760px,100%);height:min(600px,90vh);display:flex;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.settings-sidebar{width:190px;flex:0 0 190px;background:var(--panel2);border-right:1px solid var(--accent);display:flex;flex-direction:column;padding:14px 10px;overflow-y:auto}
+.settings-profile{display:flex;flex-direction:column;align-items:center;gap:6px;padding-bottom:12px;margin-bottom:10px;border-bottom:1px solid #8a6d2f60;text-align:center}
+.settings-profile .avatar{width:52px;height:52px;border-radius:50%;background:#1e1810;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:26px}
+.settings-username{color:var(--gold);font-weight:bold;font-size:13px;word-break:break-word}
+.settings-nav{display:flex;flex-direction:column;gap:6px}
+.settings-nav button{background:transparent;color:var(--text);border:1px solid var(--accent);padding:8px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;text-align:left}
+.settings-nav button.active{background:var(--gold);color:#2b2213;font-weight:bold;border-color:var(--gold)}
+.settings-content{flex:1 1 auto;padding:16px;overflow-y:auto;position:relative}
+.settings-close{position:absolute;top:8px;right:10px;background:transparent;border:none;color:var(--text);font-size:18px;cursor:pointer;line-height:1}
+.settings-close:hover{color:var(--bad)}
+.switch{position:relative;display:inline-block;width:42px;height:22px;flex:0 0 auto}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;cursor:pointer;inset:0;background:#5a4a2a;border-radius:22px;transition:.2s}
+.switch .slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;top:3px;background:#eee0c0;border-radius:50%;transition:.2s}
+.switch input:checked+.slider{background:var(--good)}
+.switch input:checked+.slider:before{transform:translateX(20px)}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="login-wrap">
+ <div class="login-card" id="loginCard"></div>
+</div>
+<div id="gameRoot" style="display:none">
+<div id="attackBanner" class="attack-banner" style="display:none"></div>
+<header>
+<h1>🏰 Reinos de Aldeia — Beta</h1>
+<button class="settings-gear" onclick="openSettings()">⚙️ <span id="gearLabel"></span></button>
+<div class="res" id="resBar"></div>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+</div>
+<div id="settingsModal" class="settings-overlay"></div>
+<script>
+const now=()=>Date.now();
+
+// =========================================================
+// ---- Internacionalização (i18n) ----
+// =========================================================
+const I18N={
+ pt:{
+  header_title:"🏰 Reinos de Aldeia — Beta",
+  login_title:"🏰 Reinos de Aldeia",
+  login_desc:"Digite seu nome de jogador para entrar (ou voltar) na sua aldeia.",
+  login_placeholder:"Seu nome",
+  login_btn:"Entrar",
+  login_saved_profiles:"Perfis salvos neste aparelho:",
+  nav_village:"🏘️ Aldeia", nav_barracks:"⚔️ Quartel", nav_map:"🗺️ Mapa", nav_multiplayer:"🌐 Multiplayer", nav_reports:"📜 Relatórios",
+  res_wood:"Madeira", res_clay:"Argila", res_iron:"Ferro",
+  logout_btn:"Sair",
+  village_title:"Sua Aldeia", buildings_title:"Construções",
+  build_main_name:"Edifício Principal", build_main_desc:"Acelera todas construções e treinos.",
+  build_wood_name:"Campo de Madeira", build_wood_desc:"Produz madeira.",
+  build_clay_name:"Poço de Argila", build_clay_desc:"Produz argila.",
+  build_iron_name:"Mina de Ferro", build_iron_desc:"Produz ferro.",
+  build_store_name:"Armazém", build_store_desc:"Aumenta capacidade de recursos.",
+  build_farm_name:"Fazenda", build_farm_desc:"Aumenta população máxima.",
+  build_barracks_name:"Quartel", build_barracks_desc:"Treina tropas.",
+  building_level:"nível", building_cost:"Custo:", building_upgrade_btn:"Melhorar", building_building:"Construindo → nível", skip_btn:"Pular ⏩",
+  barracks_need_building:"Construa o", barracks_need_building2:"(na aba Aldeia) para treinar tropas.",
+  barracks_train_title:"Treinar Tropas",
+  unit_spear_name:"Lanceiro", unit_sword_name:"Espadachim",
+  barracks_cost_unit:"Custo un.:", barracks_train_btn:"Treinar", barracks_current_troops:"Tropas atuais:",
+  barracks_queue_title:"Fila de treino", barracks_queue_empty:"Nenhum treino em andamento.",
+  map_title:"Mapa do Mundo", map_empty_slot:"vazio", map_you:"Você",
+  map_defense:"Defesa:", map_resources:"Recursos:", map_en_route:"A caminho —",
+  map_spear_label:"Lanceiros:", map_sword_label:"Espadachins:", map_attack_btn:"Atacar",
+  map_last_sync:"Tropas (última sincronização):", map_approx_res:"Recursos aprox.:",
+  map_your_attack_en_route:"Seu ataque a caminho — chega em",
+  reports_empty:"Nenhum relatório ainda. Envie um ataque!",
+  report_victory:"✅ Vitória", report_defeat:"❌ Derrota", report_sent:"Enviado:", report_losses:"Perdas:",
+  report_loot:"Saque:", report_none:"nenhuma", report_atk_power:"Poder atacante:", report_vs_def:"vs defesa inimiga:",
+  report_you:"você", report_attacked:"atacou",
+  mp_unavailable:"Recurso de multiplayer indisponível neste ambiente (armazenamento compartilhado não encontrado).",
+  mp_playing_as:"Jogando como", mp_slot:"parcela", mp_players_in_room:"jogadores na sala",
+  mp_go_to_map:"Vá na aba 🗺️ Mapa pra ver as aldeias e atacar.",
+  mp_players_title:"Jogadores na sala", mp_no_other_players:"Nenhum outro jogador na sala ainda.", mp_you_tag:"(você)",
+  attack_banner_imminent:"⚔️ ATAQUE IMINENTE!", attack_banner_incoming:"🛡️ Sua aldeia está sob ataque!",
+  attack_banner_arrives_in:"chega em", attack_banner_other_attacks:"outro(s) ataque(s)",
+  settings_title:"Configurações", settings_tab_account:"Conta", settings_tab_language:"Idioma", settings_tab_world:"Mundo", settings_tab_about:"Sobre Nós",
+  account_current_user:"Usuário atual", account_logout_btn:"Sair para o Menu Principal",
+  account_logout_confirm:"Sair para a tela de login? Sua aldeia continua salva e você pode voltar depois com o mesmo nome (ou trocar de conta).",
+  account_switch_title:"Trocar de Conta",
+  account_switch_desc:"Digite o nome de usuário salvo na aldeia que você quer acessar (ex: a aldeia de um amigo que te deu acesso).",
+  account_switch_placeholder:"Nome de usuário da aldeia",
+  account_switch_btn:"Trocar de Conta", account_saved_profiles:"Perfis salvos neste aparelho:",
+  account_switch_confirm:"Sair da conta atual e entrar como \"{name}\"? Sua aldeia atual continua salva.",
+  language_desc:"Escolha o idioma do jogo. Todos os textos serão traduzidos.",
+  world_toggle_label:"Permitir edição do mundo", world_host_only_note:"Apenas o host (criador do mundo) pode ativar isso. Quando ativado, o jogo se adapta aos novos valores para todos os jogadores.",
+  world_edit_save_btn:"Salvar alterações", world_edit_saved_msg:"Configurações do mundo salvas!",
+  world_stats_village:"Estatísticas da sua Aldeia", world_stats_res_gained:"Recursos ganhos", world_stats_res_spent:"Recursos gastos",
+  world_stats_troops_trained:"Tropas treinadas", world_stats_troops_lost:"Tropas perdidas em batalha",
+  world_stats_attacks_sent:"Ataques enviados", world_stats_attacks_sent_won:"bem-sucedidos", world_stats_attacks_sent_lost:"mal-sucedidos",
+  world_stats_attacks_received:"Ataques sofridos", world_stats_village_level:"Nível da aldeia (Edifício Principal)",
+  world_stats_buildings_title:"Construções e bônus atuais", world_stats_map_title:"Estatísticas Gerais do Mundo",
+  world_stats_map_desc:"Somatório de todos os jogadores da sala.",
+  close_btn:"✕"
+ },
+ en:{
+  header_title:"🏰 Village Kingdoms — Beta",
+  login_title:"🏰 Village Kingdoms",
+  login_desc:"Enter your player name to enter (or return to) your village.",
+  login_placeholder:"Your name",
+  login_btn:"Enter",
+  login_saved_profiles:"Saved profiles on this device:",
+  nav_village:"🏘️ Village", nav_barracks:"⚔️ Barracks", nav_map:"🗺️ Map", nav_multiplayer:"🌐 Multiplayer", nav_reports:"📜 Reports",
+  res_wood:"Wood", res_clay:"Clay", res_iron:"Iron",
+  logout_btn:"Log out",
+  village_title:"Your Village", buildings_title:"Buildings",
+  build_main_name:"Headquarters", build_main_desc:"Speeds up all construction and training.",
+  build_wood_name:"Timber Camp", build_wood_desc:"Produces wood.",
+  build_clay_name:"Clay Pit", build_clay_desc:"Produces clay.",
+  build_iron_name:"Iron Mine", build_iron_desc:"Produces iron.",
+  build_store_name:"Warehouse", build_store_desc:"Increases resource capacity.",
+  build_farm_name:"Farm", build_farm_desc:"Increases max population.",
+  build_barracks_name:"Barracks", build_barracks_desc:"Trains troops.",
+  building_level:"level", building_cost:"Cost:", building_upgrade_btn:"Upgrade", building_building:"Building → level", skip_btn:"Skip ⏩",
+  barracks_need_building:"Build the", barracks_need_building2:"(in the Village tab) to train troops.",
+  barracks_train_title:"Train Troops",
+  unit_spear_name:"Spearman", unit_sword_name:"Swordsman",
+  barracks_cost_unit:"Unit cost:", barracks_train_btn:"Train", barracks_current_troops:"Current troops:",
+  barracks_queue_title:"Training queue", barracks_queue_empty:"No training in progress.",
+  map_title:"World Map", map_empty_slot:"empty", map_you:"You",
+  map_defense:"Defense:", map_resources:"Resources:", map_en_route:"En route —",
+  map_spear_label:"Spearmen:", map_sword_label:"Swordsmen:", map_attack_btn:"Attack",
+  map_last_sync:"Troops (last sync):", map_approx_res:"Approx. resources:",
+  map_your_attack_en_route:"Your attack is en route — arrives in",
+  reports_empty:"No reports yet. Send an attack!",
+  report_victory:"✅ Victory", report_defeat:"❌ Defeat", report_sent:"Sent:", report_losses:"Losses:",
+  report_loot:"Loot:", report_none:"none", report_atk_power:"Attack power:", report_vs_def:"vs enemy defense:",
+  report_you:"you", report_attacked:"attacked",
+  mp_unavailable:"Multiplayer feature unavailable in this environment (shared storage not found).",
+  mp_playing_as:"Playing as", mp_slot:"slot", mp_players_in_room:"players in the room",
+  mp_go_to_map:"Go to the 🗺️ Map tab to see villages and attack.",
+  mp_players_title:"Players in the room", mp_no_other_players:"No other players in the room yet.", mp_you_tag:"(you)",
+  attack_banner_imminent:"⚔️ ATTACK IMMINENT!", attack_banner_incoming:"🛡️ Your village is under attack!",
+  attack_banner_arrives_in:"arrives in", attack_banner_other_attacks:"other attack(s)",
+  settings_title:"Settings", settings_tab_account:"Account", settings_tab_language:"Language", settings_tab_world:"World", settings_tab_about:"About Us",
+  account_current_user:"Current user", account_logout_btn:"Log out to Main Menu",
+  account_logout_confirm:"Log out to the login screen? Your village stays saved and you can come back later with the same name (or switch accounts).",
+  account_switch_title:"Switch Account",
+  account_switch_desc:"Enter the username saved on the village you want to access (e.g. a friend's village they gave you access to).",
+  account_switch_placeholder:"Village username",
+  account_switch_btn:"Switch Account", account_saved_profiles:"Saved profiles on this device:",
+  account_switch_confirm:"Log out of the current account and enter as \"{name}\"? Your current village stays saved.",
+  language_desc:"Choose the game language. All text will be translated.",
+  world_toggle_label:"Allow world editing", world_host_only_note:"Only the host (world creator) can enable this. When enabled, the game adapts to the new values for all players.",
+  world_edit_save_btn:"Save changes", world_edit_saved_msg:"World settings saved!",
+  world_stats_village:"Your Village Stats", world_stats_res_gained:"Resources gained", world_stats_res_spent:"Resources spent",
+  world_stats_troops_trained:"Troops trained", world_stats_troops_lost:"Troops lost in battle",
+  world_stats_attacks_sent:"Attacks sent", world_stats_attacks_sent_won:"successful", world_stats_attacks_sent_lost:"unsuccessful",
+  world_stats_attacks_received:"Attacks received", world_stats_village_level:"Village level (Headquarters)",
+  world_stats_buildings_title:"Current buildings and bonuses", world_stats_map_title:"World-wide Statistics",
+  world_stats_map_desc:"Sum of all players in the room.",
+  close_btn:"✕"
+ },
+ es:{
+  header_title:"🏰 Reinos de Aldea — Beta",
+  login_title:"🏰 Reinos de Aldea",
+  login_desc:"Escribe tu nombre de jugador para entrar (o volver) a tu aldea.",
+  login_placeholder:"Tu nombre",
+  login_btn:"Entrar",
+  login_saved_profiles:"Perfiles guardados en este dispositivo:",
+  nav_village:"🏘️ Aldea", nav_barracks:"⚔️ Cuartel", nav_map:"🗺️ Mapa", nav_multiplayer:"🌐 Multijugador", nav_reports:"📜 Informes",
+  res_wood:"Madera", res_clay:"Arcilla", res_iron:"Hierro",
+  logout_btn:"Salir",
+  village_title:"Tu Aldea", buildings_title:"Construcciones",
+  build_main_name:"Edificio Principal", build_main_desc:"Acelera todas las construcciones y entrenamientos.",
+  build_wood_name:"Campo de Madera", build_wood_desc:"Produce madera.",
+  build_clay_name:"Pozo de Arcilla", build_clay_desc:"Produce arcilla.",
+  build_iron_name:"Mina de Hierro", build_iron_desc:"Produce hierro.",
+  build_store_name:"Almacén", build_store_desc:"Aumenta la capacidad de recursos.",
+  build_farm_name:"Granja", build_farm_desc:"Aumenta la población máxima.",
+  build_barracks_name:"Cuartel", build_barracks_desc:"Entrena tropas.",
+  building_level:"nivel", building_cost:"Costo:", building_upgrade_btn:"Mejorar", building_building:"Construyendo → nivel", skip_btn:"Saltar ⏩",
+  barracks_need_building:"Construye el", barracks_need_building2:"(en la pestaña Aldea) para entrenar tropas.",
+  barracks_train_title:"Entrenar Tropas",
+  unit_spear_name:"Lancero", unit_sword_name:"Espadachín",
+  barracks_cost_unit:"Costo unidad:", barracks_train_btn:"Entrenar", barracks_current_troops:"Tropas actuales:",
+  barracks_queue_title:"Cola de entrenamiento", barracks_queue_empty:"Ningún entrenamiento en curso.",
+  map_title:"Mapa del Mundo", map_empty_slot:"vacío", map_you:"Tú",
+  map_defense:"Defensa:", map_resources:"Recursos:", map_en_route:"En camino —",
+  map_spear_label:"Lanceros:", map_sword_label:"Espadachines:", map_attack_btn:"Atacar",
+  map_last_sync:"Tropas (última sincronización):", map_approx_res:"Recursos aprox.:",
+  map_your_attack_en_route:"Tu ataque en camino — llega en",
+  reports_empty:"Aún no hay informes. ¡Envía un ataque!",
+  report_victory:"✅ Victoria", report_defeat:"❌ Derrota", report_sent:"Enviado:", report_losses:"Pérdidas:",
+  report_loot:"Botín:", report_none:"ninguna", report_atk_power:"Poder de ataque:", report_vs_def:"vs defensa enemiga:",
+  report_you:"tú", report_attacked:"atacó",
+  mp_unavailable:"Función multijugador no disponible en este entorno (almacenamiento compartido no encontrado).",
+  mp_playing_as:"Jugando como", mp_slot:"parcela", mp_players_in_room:"jugadores en la sala",
+  mp_go_to_map:"Ve a la pestaña 🗺️ Mapa para ver las aldeas y atacar.",
+  mp_players_title:"Jugadores en la sala", mp_no_other_players:"Aún no hay otros jugadores en la sala.", mp_you_tag:"(tú)",
+  attack_banner_imminent:"⚔️ ¡ATAQUE INMINENTE!", attack_banner_incoming:"🛡️ ¡Tu aldea está bajo ataque!",
+  attack_banner_arrives_in:"llega en", attack_banner_other_attacks:"otro(s) ataque(s)",
+  settings_title:"Configuración", settings_tab_account:"Cuenta", settings_tab_language:"Idioma", settings_tab_world:"Mundo", settings_tab_about:"Sobre Nosotros",
+  account_current_user:"Usuario actual", account_logout_btn:"Salir al Menú Principal",
+  account_logout_confirm:"¿Salir a la pantalla de inicio de sesión? Tu aldea sigue guardada y puedes volver luego con el mismo nombre (o cambiar de cuenta).",
+  account_switch_title:"Cambiar de Cuenta",
+  account_switch_desc:"Escribe el nombre de usuario guardado en la aldea que quieres acceder (ej: la aldea de un amigo que te dio acceso).",
+  account_switch_placeholder:"Nombre de usuario de la aldea",
+  account_switch_btn:"Cambiar de Cuenta", account_saved_profiles:"Perfiles guardados en este dispositivo:",
+  account_switch_confirm:"¿Salir de la cuenta actual y entrar como \"{name}\"? Tu aldea actual sigue guardada.",
+  language_desc:"Elige el idioma del juego. Todos los textos se traducirán.",
+  world_toggle_label:"Permitir edición del mundo", world_host_only_note:"Solo el host (creador del mundo) puede activar esto. Cuando está activado, el juego se adapta a los nuevos valores para todos los jugadores.",
+  world_edit_save_btn:"Guardar cambios", world_edit_saved_msg:"¡Configuración del mundo guardada!",
+  world_stats_village:"Estadísticas de tu Aldea", world_stats_res_gained:"Recursos ganados", world_stats_res_spent:"Recursos gastados",
+  world_stats_troops_trained:"Tropas entrenadas", world_stats_troops_lost:"Tropas perdidas en batalla",
+  world_stats_attacks_sent:"Ataques enviados", world_stats_attacks_sent_won:"exitosos", world_stats_attacks_sent_lost:"fallidos",
+  world_stats_attacks_received:"Ataques recibidos", world_stats_village_level:"Nivel de la aldea (Edificio Principal)",
+  world_stats_buildings_title:"Construcciones y bonificaciones actuales", world_stats_map_title:"Estadísticas Generales del Mundo",
+  world_stats_map_desc:"Suma de todos los jugadores de la sala.",
+  close_btn:"✕"
+ }
+};
+let LANG=(function(){try{return localStorage.getItem('tw_lang')||'pt';}catch(e){return 'pt';}})();
+function setLang(l){ LANG=l; try{localStorage.setItem('tw_lang',l);}catch(e){} render(); renderSettingsModal(); if(!S) renderLoginScreen(); updateAttackBanner(); }
+function t(key){ let d=I18N[LANG]||I18N.pt; return d[key]!==undefined? d[key] : (I18N.pt[key]!==undefined? I18N.pt[key] : key); }
+function buildName(b){return t('build_'+b+'_name');}
+function buildDesc(b){return t('build_'+b+'_desc');}
+function unitName(u){return t('unit_'+u+'_name');}
+const BUILD_KEYS=['main','wood','clay','iron','store','farm','barracks'];
+
+// =========================================================
+// ---- Configurações do mundo (editor de mundo) ----
+// =========================================================
+const HOST_NAME='Diego';
+function defaultCFG(){
+ return {
+  resBase:{wood:4.5,clay:3.5,iron:1.2},
+  growth:1.5,
+  farmBase:200, farmGrowth:1.28,
+  storeBase:1000,
+  mainSpeedPerLevel:0.12,
+  attackSecPerDist:30,
+  units:{
+   spear:{atk:10,def:15,pop:1,time:20,cost:{wood:50,clay:30,iron:10}},
+   sword:{atk:25,def:10,pop:1,time:30,cost:{wood:30,clay:30,iron:70}}
+  }
+ };
+}
+let CFG=defaultCFG();
+let worldEditMode=false;
+function mergeCFG(base,override){
+ let out=JSON.parse(JSON.stringify(base));
+ if(!override) return out;
+ if(override.resBase) Object.assign(out.resBase,override.resBase);
+ ['growth','farmBase','farmGrowth','storeBase','mainSpeedPerLevel','attackSecPerDist'].forEach(k=>{ if(override[k]!==undefined && !isNaN(override[k])) out[k]=override[k]; });
+ if(override.units) for(let u in override.units){ if(!out.units[u]) out.units[u]={cost:{}}; Object.assign(out.units[u],override.units[u]); if(override.units[u].cost) Object.assign(out.units[u].cost,override.units[u].cost); }
+ return out;
+}
+async function worldGet(){
+ if(mpReady){ try{ return await wsGet('world_settings'); }catch(e){ return null; } }
+ try{ let raw=localStorage.getItem('tw_world_settings_local'); return raw? JSON.parse(raw): null; }catch(e){ return null; }
+}
+async function worldSet(val){
+ if(mpReady){ return await wsSet('world_settings',val); }
+ try{ localStorage.setItem('tw_world_settings_local',JSON.stringify(val)); return true; }catch(e){ return false; }
+}
+async function fetchWorldSettings(){
+ let ws=await worldGet();
+ if(ws){ worldEditMode=!!ws.editMode; CFG=mergeCFG(defaultCFG(),ws.cfg); }
+}
+
+const BUILD_INFO_DESC_ONLY=null; // (mantido apenas como marcador; nomes/descrições agora vêm de t())
+function cost(base,level){let f=Math.pow(1.26,level);return {wood:Math.round(base.wood*f),clay:Math.round(base.clay*f),iron:Math.round(base.iron*f)};}
+function buildTime(base,level,mainLvl){let f=Math.pow(1.22,level);let speed=1+ (mainLvl-1)*CFG.mainSpeedPerLevel;return Math.round(base*f/speed);}
+const BASE_COST={main:{wood:90,clay:80,iron:70},wood:{wood:50,clay:60,iron:40},clay:{wood:65,clay:50,iron:40},iron:{wood:75,clay:65,iron:70},store:{wood:60,clay:50,iron:40},farm:{wood:45,clay:40,iron:30},barracks:{wood:200,clay:170,iron:90}};
+const BASE_TIME={main:60,wood:40,clay:40,iron:45,store:35,farm:30,barracks:80};
+
+// ---- Estatísticas (para a aba Mundo) ----
+function defaultStats(){
+ return {
+  resGained:{wood:0,clay:0,iron:0}, resSpent:{wood:0,clay:0,iron:0},
+  troopsTrained:{spear:0,sword:0}, troopsLost:{spear:0,sword:0},
+  attacksSent:0, attacksSentWon:0, attacksSentLost:0,
+  attacksReceived:0, attacksReceivedWon:0, attacksReceivedLost:0
+ };
+}
+
+// ---- Perfis (login/logout sem perder a aldeia) ----
+let S=null;
+let ACTIVE_PROFILE=null;
+const PROFILE_PREFIX='tw_profile_';
+function profileKey(name){return PROFILE_PREFIX+name;}
+function getActiveProfile(){return localStorage.getItem('tw_active_profile')||'';}
+function setActiveProfile(name){localStorage.setItem('tw_active_profile',name);}
+function clearActiveProfile(){localStorage.removeItem('tw_active_profile');}
+function listProfiles(){
+ let out=[];
+ for(let i=0;i<localStorage.length;i++){
+  let k=localStorage.key(i);
+  if(k&&k.indexOf(PROFILE_PREFIX)===0) out.push(k.slice(PROFILE_PREFIX.length));
+ }
+ return out;
+}
+function defaultState(){
+ return {
+  res:{wood:500,clay:500,iron:500},
+  buildings:{main:1,wood:1,clay:1,iron:1,store:1,farm:1,barracks:0},
+  buildQueue:[], // {b,level,end}
+  troops:{spear:0,sword:0},
+  trainQueue:[], // {unit,qty,end,each}
+  lastTick:now(),
+  attacks:[], // outgoing {target,units:{},arriveEnd,resolved:false,type:'attack'}
+  reports:[],
+  stats:defaultStats(),
+  villages: [
+   {id:1,name:"Aldeia Bárbara Norte",troops:{spear:8,sword:0},res:{wood:400,clay:300,iron:250},dist:1},
+   {id:2,name:"Aldeia Bárbara Leste",troops:{spear:15,sword:5},res:{wood:900,clay:700,iron:600},dist:2},
+   {id:3,name:"Aldeia Bárbara Sul",troops:{spear:2,sword:0},res:{wood:150,clay:100,iron:80},dist:1}
+  ]
+ };
+}
+function load(name){
+ let s=localStorage.getItem(profileKey(name));
+ if(s){try{let parsed=JSON.parse(s); if(!parsed.stats) parsed.stats=defaultStats(); return parsed;}catch(e){}}
+ return defaultState();
+}
+function save(){ if(!ACTIVE_PROFILE||!S) return; localStorage.setItem(profileKey(ACTIVE_PROFILE),JSON.stringify(S)); }
+
+function storeCap(){return Math.round(CFG.storeBase*Math.pow(CFG.growth,(S.buildings.main-1)+(S.buildings.store-1)));}
+function farmCap(){return Math.round(CFG.farmBase*Math.pow(CFG.farmGrowth,S.buildings.farm-1));}
+function popUsed(){return S.troops.spear*1+S.troops.sword*1 + S.trainQueue.reduce((a,t)=>a+t.qty,0);}
+const RES_KEYS=['wood','clay','iron'];
+function prodPerSec(type){let lvl=S.buildings[type];return CFG.resBase[type]*Math.pow(CFG.growth,lvl-1);}
+function prodPerHour(type){return prodPerSec(type)*3600;}
+const B_POS={main:{x:200,y:150,roof:'#b5432f',wall:'#8a6d2f'},wood:{x:70,y:65,roof:'#2f6b3a',wall:'#5a3b22'},clay:{x:330,y:65,roof:'#c07830',wall:'#8a6d2f'},iron:{x:70,y:235,roof:'#6b6b6b',wall:'#4a4a4a'},store:{x:330,y:235,roof:'#d9b458',wall:'#8a6d2f'},farm:{x:130,y:150,roof:'#7fbf5a',wall:'#5a3b22'},barracks:{x:270,y:150,roof:'#7a2020',wall:'#4a4a4a'}};
+function houseSVG(x,y,roof,wall,scale){
+ let s=scale||1;
+ return `<g transform="translate(${x},${y}) scale(${s})">
+ <polygon points="0,-22 20,-4 -20,-4" fill="${roof}" stroke="#1e1810" stroke-width="1"/>
+ <rect x="-14" y="-4" width="28" height="20" fill="${wall}" stroke="#1e1810" stroke-width="1"/>
+ </g>`;
+}
+function emptyPlotSVG(x,y){return `<g transform="translate(${x},${y})"><rect x="-16" y="-14" width="32" height="28" fill="none" stroke="#8a6d2f" stroke-dasharray="4,3" rx="4"/><text x="0" y="6" text-anchor="middle" fill="#8a6d2f" font-size="18">+</text></g>`;}
+const TREES=[[20,20],[380,20],[20,280],[380,280],[200,15],[15,150],[385,150],[200,285],[100,280],[300,280],[100,20],[300,20]];
+function treesSVG(){return TREES.map(([x,y])=>`<g transform="translate(${x},${y})"><polygon points="0,-11 7,2 -7,2" fill="#2f6b3a"/><rect x="-2" y="2" width="4" height="5" fill="#5a3b22"/></g>`).join('');}
+
+function tick(){
+ if(!S) return;
+ let t=now(), dt=(t-S.lastTick)/3600000;
+ RES_KEYS.forEach(r=>{let cap=storeCap(); let gain=Math.min(cap-S.res[r],prodPerHour(r)*dt); if(gain>0){S.res[r]+=gain; S.stats.resGained[r]+=gain;}});
+ S.lastTick=t;
+ // building queue
+ S.buildQueue=S.buildQueue.filter(q=>{
+  if(t>=q.end){S.buildings[q.b]=q.level;addLog();return false;} return true;
+ });
+ // train queue
+ S.trainQueue=S.trainQueue.filter(q=>{
+  if(t>=q.end){S.troops[q.unit]+=q.qty; S.stats.troopsTrained[q.unit]+=q.qty; return false;} return true;
+ });
+ // attacks
+ S.attacks=S.attacks.filter(a=>{
+  if(t>=a.arriveEnd){resolveAttack(a);return false;} return true;
+ });
+ save();
+}
+function addLog(){}
+
+function resolveAttack(a){
+ let v=S.villages.find(x=>x.id===a.target);
+ let atk=0; for(let u in a.units) atk+=a.units[u]*(CFG.units[u]?CFG.units[u].atk:10);
+ let def=0; for(let u in v.troops) def+=v.troops[u]*(CFG.units[u]?CFG.units[u].def:8);
+ let win = atk > def;
+ let lossRatio = win? Math.min(0.3, def/(atk+1)) : 1;
+ let lost={};
+ for(let u in a.units){lost[u]=Math.round(a.units[u]*lossRatio);}
+ let loot={wood:0,clay:0,iron:0};
+ if(win){
+  let survivors=0; for(let u in a.units) survivors+=(a.units[u]-lost[u]);
+  let capacity=survivors*25;
+  ['wood','clay','iron'].forEach(r=>{let take=Math.min(v.res[r],capacity/3);loot[r]=Math.round(take);v.res[r]=Math.round(v.res[r]-take);});
+  v.troops={}; // barb troops wiped on loss (simplified)
+  for(let u in CFG.units) v.troops[u]=0;
+  S.res.wood=Math.min(storeCap(),S.res.wood+loot.wood);
+  S.res.clay=Math.min(storeCap(),S.res.clay+loot.clay);
+  S.res.iron=Math.min(storeCap(),S.res.iron+loot.iron);
+ } else {
+  for(let u in a.units) lost[u]=a.units[u];
+ }
+ for(let u in a.units){S.troops[u]+=(a.units[u]-lost[u]); S.stats.troopsLost[u]=(S.stats.troopsLost[u]||0)+lost[u];}
+ S.stats.attacksSentWon += win?1:0; S.stats.attacksSentLost += win?0:1;
+ S.reports.unshift({time:now(),target:v.name,win,sent:a.units,lost,loot,enemyDef:def,atk});
+}
+
+function safeRender(){
+ if(!S) return;
+ renderHeader();
+ let ae=document.activeElement;
+ if(ae && ae.tagName==='INPUT' && document.getElementById('main').contains(ae)) return;
+ renderMain();
+ if(settingsOpen) renderSettingsModal();
+}
+setInterval(()=>{tick();safeRender();updateAttackBanner();},1000);
+
+let tab='village';
+function setTab(x){tab=x;render();}
+
+function fmt(n){return Math.floor(n).toLocaleString(LANG==='en'?'en-US':(LANG==='es'?'es-ES':'pt-BR'));}
+function countdown(end){let s=Math.max(0,Math.round((end-now())/1000));let m=Math.floor(s/60);let ss=s%60;return m+':'+String(ss).padStart(2,'0');}
+
+function render(){if(!S)return;renderHeader();renderMain();}
+function renderHeader(){
+ if(!S) return;
+ document.getElementById('resBar').innerHTML=
+  `<span>🪵 <b>${fmt(S.res.wood)}</b>/${storeCap()}</span>
+   <span>🧱 <b>${fmt(S.res.clay)}</b>/${storeCap()}</span>
+   <span>⛏️ <b>${fmt(S.res.iron)}</b>/${storeCap()}</span>
+   <span>👥 <b>${popUsed()}</b>/${farmCap()}</span>
+   <span class="profile-tag">👤 ${myId}</span>
+   <button class="exit-btn" onclick="doLogout()">🚪 ${t('logout_btn')}</button>`;
+ document.getElementById('nav').innerHTML=['village','barracks','map','multiplayer','reports'].map(x=>
+  `<button class="${tab===x?'active':''}" onclick="setTab('${x}')">${{village:t('nav_village'),barracks:t('nav_barracks'),map:t('nav_map'),multiplayer:t('nav_multiplayer'),reports:t('nav_reports')}[x]}</button>`).join('');
+ document.querySelector('header h1').textContent=t('header_title');
+ document.title=t('header_title');
+ let gl=document.getElementById('gearLabel'); if(gl) gl.textContent=t('settings_title');
+}
+function renderMain(){
+ let m=document.getElementById('main');
+ if(tab==='village') m.innerHTML=renderVillage();
+ if(tab==='barracks') m.innerHTML=renderBarracks();
+ if(tab==='map') m.innerHTML=renderMap();
+ if(tab==='multiplayer') m.innerHTML=renderMultiplayer();
+ if(tab==='reports') m.innerHTML=renderReports();
+}
+
+function renderVillage(){
+ let diag=`<div class="card"><h2>${t('village_title')}</h2><svg viewBox="0 0 400 300" style="width:100%;max-width:420px;display:block;margin:0 auto;background:#3d5a2f;border-radius:6px">
+ ${treesSVG()}
+ ${Object.keys(B_POS).map(b=>{let p=B_POS[b];let lvl=S.buildings[b];
+   if(lvl<1) return emptyPlotSVG(p.x,p.y);
+   let scale=0.8+Math.min(lvl,10)*0.03;
+   return houseSVG(p.x,p.y,p.roof,p.wall,scale)+`<text x="${p.x}" y="${p.y+22}" text-anchor="middle" fill="#eee0c0" font-size="11">${buildName(b).split(' ')[0]} ${lvl}</text>`;
+ }).join('')}
+ </svg></div>`;
+ let html=diag+`<h2>${t('buildings_title')}</h2><div class="grid">`;
+ for(let b of BUILD_KEYS){
+  let lvl=S.buildings[b];
+  let q=S.buildQueue.find(x=>x.b===b);
+  let c=cost(BASE_COST[b],lvl);
+  let afford=S.res.wood>=c.wood&&S.res.clay>=c.clay&&S.res.iron>=c.iron;
+  html+=`<div class="card"><b>${buildName(b)}</b> <span class="tag">${t('building_level')} ${lvl}</span><br><small>${buildDesc(b)}</small>${buildingPreview(b)}`;
+  if(q){
+   html+=`<div class="bar"><div style="width:${100-100*(q.end-now())/(q.end-q.start)}%"></div></div>
+   <div class="row"><small>${t('building_building')} ${q.level} (${countdown(q.end)})</small>
+   <button class="act skip" onclick="skipBuild('${b}')">${t('skip_btn')}</button></div>`;
+  } else {
+   html+=`<div class="row"><small>${t('building_cost')} 🪵${c.wood} 🧱${c.clay} ⛏️${c.iron} (${buildTime(BASE_TIME[b],lvl,S.buildings.main)}s)</small>
+   <button class="act" ${afford&&S.buildQueue.length<1?'':'disabled'} onclick="upgrade('${b}')">${t('building_upgrade_btn')}</button></div>`;
+  }
+  html+=`</div>`;
+ }
+ html+=`</div>`;
+ return html;
+}
+function buildingPreview(b){
+ let lvl=S.buildings[b];
+ if(CFG.resBase[b]!==undefined){
+  let cur=prodPerSec(b), nxt=CFG.resBase[b]*Math.pow(CFG.growth,lvl);
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${cur.toFixed(1)} ${t('res_'+b).toLowerCase()}/s</b> → ${t('building_level')} ${lvl+1}: <b>${nxt.toFixed(1)} ${t('res_'+b).toLowerCase()}/s</b></div>`;
+ }
+ if(b==='store'){
+  let cur=storeCap(); let nxt=Math.round(CFG.storeBase*Math.pow(CFG.growth,(S.buildings.main-1)+lvl));
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${cur}</b> → ${t('building_level')} ${lvl+1}: <b>${nxt}</b></div>`;
+ }
+ if(b==='main'){
+  let curCap=storeCap(); let nxtCap=Math.round(CFG.storeBase*Math.pow(CFG.growth,lvl+(S.buildings.store-1)));
+  let curSpeed=Math.round((1+(lvl-1)*CFG.mainSpeedPerLevel)*100); let nxtSpeed=Math.round((1+lvl*CFG.mainSpeedPerLevel)*100);
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${curSpeed}%, ${curCap}</b> → ${t('building_level')} ${lvl+1}: <b>${nxtSpeed}%, ${nxtCap}</b></div>`;
+ }
+ if(b==='farm'){
+  let cur=farmCap(); let nxt=Math.round(CFG.farmBase*Math.pow(CFG.farmGrowth,lvl));
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${cur}</b> → ${t('building_level')} ${lvl+1}: <b>${nxt}</b></div>`;
+ }
+ return '';
+}
+function upgrade(b){
+ if(S.buildQueue.length>=1) return;
+ let lvl=S.buildings[b], c=cost(BASE_COST[b],lvl);
+ if(S.res.wood<c.wood||S.res.clay<c.clay||S.res.iron<c.iron) return;
+ S.res.wood-=c.wood;S.res.clay-=c.clay;S.res.iron-=c.iron;
+ S.stats.resSpent.wood+=c.wood; S.stats.resSpent.clay+=c.clay; S.stats.resSpent.iron+=c.iron;
+ let dur=buildTime(BASE_TIME[b],lvl,S.buildings.main)*1000;
+ S.buildQueue.push({b,level:lvl+1,start:now(),end:now()+dur});
+ save();render();
+}
+function skipBuild(b){let q=S.buildQueue.find(x=>x.b===b);if(q)q.end=now();tick();render();}
+
+function renderBarracks(){
+ if(S.buildings.barracks<1) return `<div class="card">${t('barracks_need_building')} <b>${buildName('barracks')}</b> ${t('barracks_need_building2')}</div>`;
+ let html=`<h2>${t('barracks_train_title')}</h2><div class="grid">`;
+ for(let u in CFG.units){
+  let info=CFG.units[u];
+  html+=`<div class="card"><b>${unitName(u)}</b> <span class="tag">⚔️${info.atk} 🛡️${info.def}</span>
+  <div class="row"><small>${t('barracks_cost_unit')} 🪵${info.cost.wood} 🧱${info.cost.clay} ⛏️${info.cost.iron}, ${info.time}s</small></div>
+  <div class="row"><input type="number" min="1" value="1" id="qty_${u}"><button class="act" onclick="train('${u}')">${t('barracks_train_btn')}</button></div>
+  <small>${t('barracks_current_troops')} <b>${S.troops[u]}</b></small></div>`;
+ }
+ html+=`</div><h2>${t('barracks_queue_title')}</h2>`;
+ if(S.trainQueue.length===0) html+=`<div class="card"><small>${t('barracks_queue_empty')}</small></div>`;
+ S.trainQueue.forEach((q,i)=>{
+  html+=`<div class="card row"><span>${unitName(q.unit)} x${q.qty} — ${countdown(q.end)}</span>
+  <button class="act skip" onclick="skipTrain(${i})">${t('skip_btn')}</button></div>`;
+ });
+ return html;
+}
+function train(u){
+ let qty=parseInt(document.getElementById('qty_'+u).value)||1;
+ let info=CFG.units[u];
+ let totalCost={wood:info.cost.wood*qty,clay:info.cost.clay*qty,iron:info.cost.iron*qty};
+ if(S.res.wood<totalCost.wood||S.res.clay<totalCost.clay||S.res.iron<totalCost.iron){alert('!');return;}
+ if(popUsed()+qty>farmCap()){alert('!');return;}
+ S.res.wood-=totalCost.wood;S.res.clay-=totalCost.clay;S.res.iron-=totalCost.iron;
+ S.stats.resSpent.wood+=totalCost.wood; S.stats.resSpent.clay+=totalCost.clay; S.stats.resSpent.iron+=totalCost.iron;
+ S.trainQueue.push({unit:u,qty,end:now()+info.time*qty*1000});
+ save();render();
+}
+function skipTrain(i){S.trainQueue[i].end=now();tick();render();}
+
+const BARB_POS={1:[15,68],2:[50,18],3:[82,65]};
+const SLOT_POS=[[30,40],[65,42],[22,80],[78,15]];
+let openPlot=null;
+function togglePlot(k){openPlot=(openPlot===k)?null:k;render();}
+function renderMap(){
+ let mySlot2=mpPlayers[myId]?mpPlayers[myId].slot:null;
+ let icons='';
+ S.villages.forEach(v=>{
+  let [x,y]=BARB_POS[v.id];
+  icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;cursor:pointer" onclick="togglePlot('b${v.id}')">
+   ${houseSVGwrap(52,'#8a5a2f','#5a3b22')}<div class="tag">${v.name.split(' ')[2]||v.name}</div></div>`;
+ });
+ for(let i=0;i<4;i++){
+  let [x,y]=SLOT_POS[i];
+  let occ=Object.values(mpPlayers).find(p=>p.slot===i);
+  if(occ && occ.name===myId){
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center">${houseSVGwrap(56,'#d9b458','#8a6d2f')}<div class="tag"><b>${t('map_you')}</b>${mpIncoming.length?' 🔥':''}</div></div>`;
+  } else if(occ){
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;cursor:pointer" onclick="togglePlot('p${i}')">${houseSVGwrap(52,'#3a6fa0','#22405a')}<div class="tag">${occ.name}</div></div>`;
+  } else {
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;color:#8a6d2f;font-size:22px">+<div class="tag">${t('map_empty_slot')}</div></div>`;
+  }
+ }
+ let html=`<h2>${t('map_title')}</h2><div class="card" style="position:relative;height:340px;background:#3d5a2f;overflow:hidden">
+  <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%" preserveAspectRatio="none">
+  ${[[8,8],[92,8],[8,92],[92,92],[45,5],[5,45],[95,45],[45,95],[60,90],[30,10]].map(([x,y])=>`<g transform="translate(${x},${y})"><polygon points="0,-3 2,0.5 -2,0.5" fill="#2f6b3a"/></g>`).join('')}
+  </svg>${icons}</div>`;
+ if(openPlot&&openPlot[0]==='b'){
+  let v=S.villages.find(x=>x.id===parseInt(openPlot.slice(1)));
+  let atkInProg=S.attacks.find(a=>a.target===v.id);
+  html+=`<div class="card"><b>${v.name}</b><br><small>${t('map_defense')} ${unitName('spear')} ${v.troops.spear}, ${unitName('sword')} ${v.troops.sword} | ${t('map_resources')} 🪵${Math.round(v.res.wood)} 🧱${Math.round(v.res.clay)} ⛏️${Math.round(v.res.iron)}</small>`;
+  html+= atkInProg? `<div class="row"><small>${t('map_en_route')} ${countdown(atkInProg.arriveEnd)}</small><button class="act skip" onclick="skipAttack(${v.id})">${t('skip_btn')}</button></div>`
+   : `<div class="row">${t('map_spear_label')}<input type="number" min="0" value="0" id="send_spear_${v.id}" style="width:55px">${t('map_sword_label')}<input type="number" min="0" value="0" id="send_sword_${v.id}" style="width:55px"><button class="act" onclick="sendAttack(${v.id})">${t('map_attack_btn')}</button></div>`;
+  html+=`</div>`;
+ }
+ if(openPlot&&openPlot[0]==='p'){
+  let i=parseInt(openPlot.slice(1));
+  let occ=Object.values(mpPlayers).find(p=>p.slot===i);
+  if(occ){
+   let res=occ.res||{wood:0,clay:0,iron:0};
+   let outgoing=Object.values(mpAttacksCache||{}).find(a=>a.from===myId&&a.to===occ.name&&!a.resolved&&a.arriveEnd>now());
+   html+=`<div class="card"><b>${occ.name}</b><br><small>${t('map_last_sync')} ${unitName('spear')} ${occ.troops?.spear||0}, ${unitName('sword')} ${occ.troops?.sword||0}</small><br><small>${t('map_approx_res')} 🪵${Math.round(res.wood)} 🧱${Math.round(res.clay)} ⛏️${Math.round(res.iron)}</small>`;
+   if(outgoing){
+    html+=`<div class="row"><small>${t('map_your_attack_en_route')} ${countdown(outgoing.arriveEnd)}</small></div>`;
+   } else {
+    html+=`<div class="row">${t('map_spear_label')}<input type="number" min="0" value="0" id="mpsend_spear_${occ.name}" style="width:55px">${t('map_sword_label')}<input type="number" min="0" value="0" id="mpsend_sword_${occ.name}" style="width:55px"><button class="act" onclick="mpAttack('${occ.name}')">${t('map_attack_btn')}</button></div>`;
+   }
+   html+=`</div>`;
+  }
+ }
+ return html;
+}
+function houseSVGwrap(size,roof,wall){return `<svg viewBox="-20 -24 40 44" width="${size}" height="${size}">${houseSVG(0,0,roof,wall,1)}</svg>`;}
+function sendAttack(id){
+ let v=S.villages.find(x=>x.id===id);
+ let sp=parseInt(document.getElementById('send_spear_'+id).value)||0;
+ let sw=parseInt(document.getElementById('send_sword_'+id).value)||0;
+ if(sp>S.troops.spear||sw>S.troops.sword||(sp+sw)<=0){alert('!');return;}
+ S.troops.spear-=sp;S.troops.sword-=sw;
+ S.stats.attacksSent++;
+ let travel=v.dist*CFG.attackSecPerDist*1000;
+ S.attacks.push({target:id,units:{spear:sp,sword:sw},arriveEnd:now()+travel});
+ save();render();
+}
+function skipAttack(id){let a=S.attacks.find(x=>x.target===id);if(a)a.arriveEnd=now();tick();render();}
+
+function renderReports(){
+ let all=[...S.reports.map(r=>({...r,mp:false})), ...mpReports.map(r=>({time:r.time,target:(r.to===myId?t('report_you'):r.to)+(r.from===myId?'':' → '+t('report_attacked')+' '+t('report_you')),win:r.win,sent:r.sent,lost:r.lost,loot:r.loot,atk:0,enemyDef:0,mp:true,from:r.from,to:r.to}))].sort((a,b)=>b.time-a.time);
+ if(all.length===0) return `<div class="card"><small>${t('reports_empty')}</small></div>`;
+ return all.map(r=>{
+  if(r.mp){
+   let sentStr=Object.entries(r.sent).map(([u,q])=>`${unitName(u)} ${q}`).join(', ');
+   let lostStr=Object.entries(r.lost).map(([u,q])=>`${unitName(u)} -${q}`).join(', ');
+   let lootStr=`🪵${r.loot.wood} 🧱${r.loot.clay} ⛏️${r.loot.iron}`;
+   return `<div class="report ${r.win?'':'lost'}"><b>${r.win?t('report_victory'):t('report_defeat')}</b> — <b>${r.from}</b> ${t('report_attacked')} <b>${r.to}</b> — ${new Date(r.time).toLocaleTimeString(LANG==='en'?'en-US':(LANG==='es'?'es-ES':'pt-BR'))}<br>
+   <small>${t('report_sent')} ${sentStr}</small><br><small>${t('report_losses')} ${lostStr||t('report_none')}</small><br>${r.win?`<small>${t('report_loot')} ${lootStr}</small>`:''}</div>`;
+  }
+  return renderOldReport(r);
+ }).join('');
+}
+function renderOldReport(r){
+  let sentStr=Object.entries(r.sent).map(([u,q])=>`${unitName(u)} ${q}`).join(', ');
+  let lostStr=Object.entries(r.lost).map(([u,q])=>`${unitName(u)} -${q}`).join(', ');
+  let lootStr=`🪵${r.loot.wood} 🧱${r.loot.clay} ⛏️${r.loot.iron}`;
+  return `<div class="report ${r.win?'':'lost'}">
+   <b>${r.win?t('report_victory'):t('report_defeat')}</b> — <b>${r.target}</b> — ${new Date(r.time).toLocaleTimeString(LANG==='en'?'en-US':(LANG==='es'?'es-ES':'pt-BR'))}<br>
+   <small>${t('report_sent')} ${sentStr}</small><br>
+   <small>${t('report_losses')} ${lostStr||t('report_none')}</small><br>
+   <small>${t('report_atk_power')} ${Math.round(r.atk)} ${t('report_vs_def')} ${Math.round(r.enemyDef)}</small><br>
+   ${r.win?`<small>${t('report_loot')} ${lootStr}</small>`:''}
+  </div>`;
+}
+
+// ---- Multiplayer / PvP (até 4 jogadores, via armazenamento compartilhado do artifact) ----
+let mpReady = (typeof window!=='undefined' && !!window.storage);
+let myId='', mySlot=0;
+let mpPlayers={}, mpIncoming=[], mpReports=[], mpAttacksCache={};
+let mpPollTimer=null;
+
+async function wsGet(key){
+ if(!mpReady) return null;
+ try{ let r=await window.storage.get(key,true); return r? JSON.parse(r.value) : null; }
+ catch(e){ return null; }
+}
+async function wsSet(key,val){
+ if(!mpReady) return false;
+ try{ let r=await window.storage.set(key,JSON.stringify(val),true); return !!r; }
+ catch(e){ return false; }
+}
+
+async function mpEnsureJoined(){
+ if(!mpReady||!myId) return;
+ let players=(await wsGet('world_players'))||{};
+ if(players[myId]!==undefined){
+  mySlot=players[myId].slot;
+ } else {
+  let used=Object.values(players).map(p=>p.slot);
+  let free=[0,1,2,3].find(s=>!used.includes(s));
+  mySlot = free!==undefined? free : (Object.keys(players).length%4);
+ }
+ await mpSync();
+}
+async function mpSync(){
+ if(!mpReady||!myId||!S) return;
+ let players=(await wsGet('world_players'))||{};
+ players[myId]={name:myId,slot:mySlot,res:S.res,buildings:S.buildings,troops:S.troops,stats:S.stats,updated:now()};
+ await wsSet('world_players',players);
+ mpPlayers=players;
+}
+function pruneAttacks(attacks){
+ let out={};
+ for(let id in attacks){
+  let a=attacks[id];
+  if(!a.resolved || (now()-a.arriveEnd)<15*60*1000) out[id]=a;
+ }
+ return out;
+}
+function pruneReports(reports){
+ let vals=Object.entries(reports).sort((a,b)=>b[1].time-a[1].time).slice(0,80);
+ let out={}; vals.forEach(([id,r])=>out[id]=r); return out;
+}
+async function mpAttack(targetId){
+ if(!mpReady){alert(t('mp_unavailable'));return;}
+ let sp=parseInt(document.getElementById('mpsend_spear_'+targetId).value)||0;
+ let sw=parseInt(document.getElementById('mpsend_sword_'+targetId).value)||0;
+ if(sp>S.troops.spear||sw>S.troops.sword||(sp+sw)<=0){alert('!');return;}
+ S.troops.spear-=sp;S.troops.sword-=sw; S.stats.attacksSent++; save();
+ await mpSync();
+ let attacks=(await wsGet('world_attacks'))||{};
+ let id='a'+now()+'_'+Math.random().toString(36).slice(2,7);
+ attacks[id]={id,from:myId,to:targetId,units:{spear:sp,sword:sw},sentAt:now(),arriveEnd:now()+45000,resolved:false};
+ attacks=pruneAttacks(attacks);
+ let ok=await wsSet('world_attacks',attacks);
+ if(!ok){ alert('!'); S.troops.spear+=sp;S.troops.sword+=sw; S.stats.attacksSent--; save(); return; }
+ mpAttacksCache=attacks;
+ render();
+}
+async function mpResolveAttack(a){
+ let players=(await wsGet('world_players'))||{};
+ let def=players[a.to]||{troops:{spear:0,sword:0},res:{wood:0,clay:0,iron:0}};
+ let atk=0; for(let u in a.units) atk+=a.units[u]*CFG.units[u].atk;
+ let defp=0; for(let u in (def.troops||{})) defp+=(def.troops[u]||0)*(CFG.units[u]?CFG.units[u].def:10);
+ let win=atk>defp;
+ let lossRatio=win?Math.min(0.3,defp/(atk+1)):1;
+ let lost={}; for(let u in a.units) lost[u]=Math.round(a.units[u]*lossRatio);
+ let loot={wood:0,clay:0,iron:0};
+ if(win){
+  let survivors=0; for(let u in a.units) survivors+=(a.units[u]-lost[u]);
+  let cap=survivors*25;
+  ['wood','clay','iron'].forEach(r=>{let av=(def.res&&def.res[r])||0;let take=Math.min(av,cap/3);loot[r]=Math.round(take);});
+ }
+ if(a.to===myId && S){
+  if(win) ['wood','clay','iron'].forEach(r=>{S.res[r]=Math.max(0,S.res[r]-loot[r]);});
+  for(let u in a.units) S.troops[u]=Math.max(0,(S.troops[u]||0)-lost[u]);
+  S.stats.attacksReceived++; S.stats.attacksReceivedWon += win?0:1; S.stats.attacksReceivedLost += win?1:0;
+  save(); await mpSync();
+ }
+ if(a.from===myId && S){
+  for(let u in a.units){ S.troops[u]=(S.troops[u]||0)+(a.units[u]-lost[u]); S.stats.troopsLost[u]=(S.stats.troopsLost[u]||0)+lost[u]; }
+  if(win) ['wood','clay','iron'].forEach(r=>{S.res[r]=Math.min(storeCap(),S.res[r]+loot[r]);});
+  S.stats.attacksSentWon += win?1:0; S.stats.attacksSentLost += win?0:1;
+  save(); await mpSync();
+ }
+ let attacks=(await wsGet('world_attacks'))||{};
+ if(attacks[a.id]){ attacks[a.id].resolved=true; attacks=pruneAttacks(attacks); await wsSet('world_attacks',attacks); }
+ let reports=(await wsGet('world_reports'))||{};
+ reports[a.id]={from:a.from,to:a.to,win,sent:a.units,lost,loot,time:now()};
+ reports=pruneReports(reports);
+ await wsSet('world_reports',reports);
+}
+async function mpPoll(){
+ if(!mpReady||!myId) return;
+ let players=(await wsGet('world_players'))||{};
+ mpPlayers=players;
+ let attacks=(await wsGet('world_attacks'))||{};
+ mpAttacksCache=attacks;
+ for(let id in attacks){
+  let a=attacks[id];
+  if(!a.resolved && now()>=a.arriveEnd && (a.from===myId||a.to===myId)){
+   await mpResolveAttack(a);
+  }
+ }
+ mpIncoming=Object.values(mpAttacksCache).filter(a=>a.to===myId && !a.resolved);
+ let reports=(await wsGet('world_reports'))||{};
+ mpReports=Object.values(reports).filter(r=>r.from===myId||r.to===myId).sort((a,b)=>b.time-a.time);
+ await fetchWorldSettings();
+ safeRender();
+}
+function startMpPolling(){
+ if(mpPollTimer||!mpReady) return;
+ mpPoll();
+ mpPollTimer=setInterval(mpPoll,3500);
+}
+function stopMpPolling(){ if(mpPollTimer){clearInterval(mpPollTimer);mpPollTimer=null;} }
+function renderMultiplayer(){
+ if(!mpReady) return `<div class="card"><small>${t('mp_unavailable')}</small></div>`;
+ let ids=Object.keys(mpPlayers);
+ let list=ids.length? ids.map(id=>`<div class="row"><span>${id===myId?'⭐ <b>'+id+'</b> '+t('mp_you_tag'):id}</span><small>${t('mp_slot')} ${(mpPlayers[id].slot??0)+1}</small></div>`).join('') : `<small>${t('mp_no_other_players')}</small>`;
+ return `<div class="card"><small>${t('mp_playing_as')} <b>${myId}</b> (${t('mp_slot')} ${mySlot+1}) — ${ids.length}/4 ${t('mp_players_in_room')}.<br>${t('mp_go_to_map')}</small></div>
+ <div class="card"><h2>${t('mp_players_title')}</h2>${list}</div>`;
+}
+
+// ---- Notificação de ataque (banner no topo) ----
+function updateAttackBanner(){
+ let el=document.getElementById('attackBanner');
+ if(!el) return;
+ if(!S){ el.style.display='none'; return; }
+ let incoming=(mpIncoming||[]).filter(a=>!a.resolved && a.arriveEnd>now());
+ if(incoming.length===0){ el.style.display='none'; return; }
+ incoming.sort((a,b)=>a.arriveEnd-b.arriveEnd);
+ let a=incoming[0];
+ let total=Math.max(1,a.arriveEnd-a.sentAt);
+ let progress=Math.min(1,Math.max(0,(now()-a.sentAt)/total));
+ let imminent=progress>=0.75;
+ el.style.display='block';
+ el.className='attack-banner'+(imminent?' imminent':'');
+ let extra=incoming.length>1? ` (+${incoming.length-1} ${t('attack_banner_other_attacks')})` : '';
+ el.innerHTML=(imminent? t('attack_banner_imminent')+' ' : t('attack_banner_incoming')+' ')+
+  `<b>${a.from}</b> ${t('attack_banner_arrives_in')} <b>${countdown(a.arriveEnd)}</b>${extra}`;
+}
+
+// =========================================================
+// ---- Configurações (menu de settings) ----
+// =========================================================
+let settingsOpen=false, settingsTab='account';
+function openSettings(){ settingsTab='account'; settingsOpen=true; renderSettingsModal(); }
+function closeSettings(){ settingsOpen=false; renderSettingsModal(); }
+function setSettingsTab(x){ settingsTab=x; renderSettingsModal(); }
+
+function renderSettingsModal(){
+ let el=document.getElementById('settingsModal');
+ if(!el) return;
+ if(!settingsOpen || !S){ el.style.display='none'; return; }
+ el.style.display='flex';
+ let tabs=['account','language','world','about'];
+ let labels={account:t('settings_tab_account'),language:t('settings_tab_language'),world:t('settings_tab_world'),about:t('settings_tab_about')};
+ let content='';
+ if(settingsTab==='account') content=renderAccountTab();
+ else if(settingsTab==='language') content=renderLanguageTab();
+ else if(settingsTab==='world') content=renderWorldTab();
+ else if(settingsTab==='about') content=renderAboutTab();
+ el.innerHTML=`<div class="settings-panel">
+  <div class="settings-sidebar">
+   <div class="settings-profile"><div class="avatar">🪓</div><div class="settings-username">${myId||''}</div></div>
+   <div class="settings-nav">${tabs.map(x=>`<button class="${settingsTab===x?'active':''}" onclick="setSettingsTab('${x}')">${labels[x]}</button>`).join('')}</div>
+  </div>
+  <div class="settings-content">
+   <button class="settings-close" onclick="closeSettings()">${t('close_btn')}</button>
+   ${content}
+  </div>
+ </div>`;
+}
+
+function renderAccountTab(){
+ return `<h2>${t('settings_tab_account')}</h2>
+ <div class="card"><small>${t('account_current_user')}</small><br><b>👤 ${myId}</b></div>
+ <div class="card"><button class="exit-btn" onclick="settingsLogout()">🚪 ${t('account_logout_btn')}</button></div>
+ <div class="card"><h2>${t('account_switch_title')}</h2><small>${t('account_switch_desc')}</small>
+ <input type="text" id="switchAccName" placeholder="${t('account_switch_placeholder')}" style="width:100%;margin:8px 0;background:#1e1810;color:var(--text);border:1px solid var(--accent);border-radius:4px;padding:8px;font-family:inherit">
+ <button class="act" onclick="settingsSwitchAccount(document.getElementById('switchAccName').value)">${t('account_switch_btn')}</button>
+ ${renderQuickProfiles()}
+ </div>`;
+}
+function renderQuickProfiles(){
+ let profiles=listProfiles().filter(p=>p!==myId);
+ if(profiles.length===0) return '';
+ return `<div style="margin-top:10px"><small>${t('account_saved_profiles')}</small><div class="profile-list">${profiles.map(p=>`<button onclick="settingsSwitchAccount('${p.replace(/'/g,"\\'")}')">${p}</button>`).join('')}</div></div>`;
+}
+function settingsLogout(){
+ if(!confirm(t('account_logout_confirm'))) return;
+ settingsOpen=false;
+ doLogoutSilent();
+}
+function settingsSwitchAccount(name){
+ name=(name||'').trim();
+ if(!name) return;
+ if(name===myId){ closeSettings(); return; }
+ if(!confirm(t('account_switch_confirm').replace('{name}',name))) return;
+ save();
+ stopMpPolling();
+ settingsOpen=false;
+ startGame(name);
+}
+
+function renderLanguageTab(){
+ return `<h2>${t('settings_tab_language')}</h2><small>${t('language_desc')}</small>
+ <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+ <button class="act ${LANG==='pt'?'lang-active':''}" onclick="setLang('pt')">🇧🇷 Português</button>
+ <button class="act ${LANG==='en'?'lang-active':''}" onclick="setLang('en')">🇺🇸 English</button>
+ <button class="act ${LANG==='es'?'lang-active':''}" onclick="setLang('es')">🇪🇸 Español</button>
+ </div>`;
+}
+
+function renderWorldTab(){
+ let isHost = myId && myId.trim().toLowerCase()===HOST_NAME.toLowerCase();
+ let html='<h2>'+t('settings_tab_world')+'</h2>';
+ if(isHost){
+  html+=`<div class="card"><div class="row"><b>${t('world_toggle_label')}</b>
+  <label class="switch"><input type="checkbox" ${worldEditMode?'checked':''} onchange="toggleWorldEdit(this.checked)"><span class="slider"></span></label></div>
+  <small>${t('world_host_only_note')}</small></div>`;
+ }
+ if(isHost && worldEditMode){
+  html+=renderWorldEditor();
+ } else {
+  html+=renderWorldStats();
+ }
+ return html;
+}
+async function toggleWorldEdit(v){
+ worldEditMode=v;
+ await worldSet({editMode:worldEditMode,cfg:CFG});
+ renderSettingsModal();
+}
+function renderWorldEditor(){
+ let c=CFG;
+ return `<div class="card">
+  <div class="row"><small>${t('res_wood')}/s</small><input type="number" step="0.1" id="cfg_res_wood" value="${c.resBase.wood}"></div>
+  <div class="row"><small>${t('res_clay')}/s</small><input type="number" step="0.1" id="cfg_res_clay" value="${c.resBase.clay}"></div>
+  <div class="row"><small>${t('res_iron')}/s</small><input type="number" step="0.1" id="cfg_res_iron" value="${c.resBase.iron}"></div>
+  <div class="row"><small>Growth</small><input type="number" step="0.01" id="cfg_growth" value="${c.growth}"></div>
+  <div class="row"><small>Farm base</small><input type="number" id="cfg_farmbase" value="${c.farmBase}"></div>
+  <div class="row"><small>Farm growth</small><input type="number" step="0.01" id="cfg_farmgrowth" value="${c.farmGrowth}"></div>
+  <div class="row"><small>Store base</small><input type="number" id="cfg_storebase" value="${c.storeBase}"></div>
+  <div class="row"><small>Seg./distância (ataque)</small><input type="number" id="cfg_atkspeed" value="${c.attackSecPerDist}"></div>
+  ${Object.keys(c.units).map(u=>`
+  <div style="margin-top:8px;font-weight:bold;color:var(--gold)">${unitName(u)}</div>
+  <div class="row" style="flex-wrap:wrap"><small>ATK</small><input type="number" id="cfg_${u}_atk" value="${c.units[u].atk}">
+  <small>DEF</small><input type="number" id="cfg_${u}_def" value="${c.units[u].def}">
+  <small>${t('res_wood')}</small><input type="number" id="cfg_${u}_cw" value="${c.units[u].cost.wood}">
+  <small>${t('res_clay')}</small><input type="number" id="cfg_${u}_cc" value="${c.units[u].cost.clay}">
+  <small>${t('res_iron')}</small><input type="number" id="cfg_${u}_ci" value="${c.units[u].cost.iron}">
+  <small>seg.</small><input type="number" id="cfg_${u}_time" value="${c.units[u].time}"></div>
+  `).join('')}
+  <button class="act" onclick="saveWorldEditor()" style="margin-top:8px">${t('world_edit_save_btn')}</button>
+ </div>`;
+}
+async function saveWorldEditor(){
+ let g=id=>parseFloat(document.getElementById(id).value);
+ CFG.resBase.wood=g('cfg_res_wood'); CFG.resBase.clay=g('cfg_res_clay'); CFG.resBase.iron=g('cfg_res_iron');
+ CFG.growth=g('cfg_growth'); CFG.farmBase=g('cfg_farmbase'); CFG.farmGrowth=g('cfg_farmgrowth');
+ CFG.storeBase=g('cfg_storebase'); CFG.attackSecPerDist=g('cfg_atkspeed');
+ for(let u in CFG.units){
+  CFG.units[u].atk=g('cfg_'+u+'_atk'); CFG.units[u].def=g('cfg_'+u+'_def');
+  CFG.units[u].cost.wood=g('cfg_'+u+'_cw'); CFG.units[u].cost.clay=g('cfg_'+u+'_cc'); CFG.units[u].cost.iron=g('cfg_'+u+'_ci');
+  CFG.units[u].time=g('cfg_'+u+'_time');
+ }
+ await worldSet({editMode:worldEditMode,cfg:CFG});
+ alert(t('world_edit_saved_msg'));
+ render();renderSettingsModal();
+}
+function buildingPreviewCurrent(b){
+ let lvl=S.buildings[b];
+ if(CFG.resBase[b]!==undefined){ return `<b>${prodPerSec(b).toFixed(1)} ${t('res_'+b).toLowerCase()}/s</b>`; }
+ if(b==='store') return `<b>${storeCap()}</b>`;
+ if(b==='main'){ let sp=Math.round((1+(lvl-1)*CFG.mainSpeedPerLevel)*100); return `<b>${sp}% · ${storeCap()}</b>`; }
+ if(b==='farm') return `<b>${farmCap()}</b>`;
+ if(b==='barracks') return `<b>${lvl>0?'✔️':'—'}</b>`;
+ return '<b>—</b>';
+}
+function renderWorldStats(){
+ if(!S) return '';
+ let st=S.stats;
+ return `<div class="card"><h2>${t('world_stats_village')}</h2>
+ <div class="row"><small>${t('world_stats_village_level')}</small><b>${S.buildings.main}</b></div>
+ <div class="row"><small>${t('world_stats_res_gained')}</small><b>🪵${fmt(st.resGained.wood)} 🧱${fmt(st.resGained.clay)} ⛏️${fmt(st.resGained.iron)}</b></div>
+ <div class="row"><small>${t('world_stats_res_spent')}</small><b>🪵${fmt(st.resSpent.wood)} 🧱${fmt(st.resSpent.clay)} ⛏️${fmt(st.resSpent.iron)}</b></div>
+ <div class="row"><small>${t('world_stats_troops_trained')}</small><b>${unitName('spear')} ${st.troopsTrained.spear} · ${unitName('sword')} ${st.troopsTrained.sword}</b></div>
+ <div class="row"><small>${t('world_stats_troops_lost')}</small><b>${unitName('spear')} ${st.troopsLost.spear||0} · ${unitName('sword')} ${st.troopsLost.sword||0}</b></div>
+ <div class="row"><small>${t('world_stats_attacks_sent')}</small><b>${st.attacksSent} (${st.attacksSentWon} ${t('world_stats_attacks_sent_won')}, ${st.attacksSentLost} ${t('world_stats_attacks_sent_lost')})</b></div>
+ <div class="row"><small>${t('world_stats_attacks_received')}</small><b>${st.attacksReceived} (${st.attacksReceivedWon} ${t('world_stats_attacks_sent_won')}, ${st.attacksReceivedLost} ${t('world_stats_attacks_sent_lost')})</b></div>
+ </div>
+ <div class="card"><h2>${t('world_stats_buildings_title')}</h2>
+ ${BUILD_KEYS.map(b=>`<div class="row"><small>${buildName(b)} (${t('building_level')} ${S.buildings[b]})</small>${buildingPreviewCurrent(b)}</div>`).join('')}
+ </div>
+ <div class="card"><h2>${t('world_stats_map_title')}</h2><small>${t('world_stats_map_desc')}</small>
+ ${renderWorldAggregate()}
+ </div>`;
+}
+function renderWorldAggregate(){
+ let all = mpReady? Object.values(mpPlayers) : (S? [{res:S.res,stats:S.stats,troops:S.troops}] : []);
+ let total = {res:{wood:0,clay:0,iron:0}, troopsTrained:{spear:0,sword:0}, troopsLost:{spear:0,sword:0}, attacksSent:0, attacksReceived:0, players: all.length};
+ all.forEach(p=>{
+  if(p.res) ['wood','clay','iron'].forEach(r=>total.res[r]+=p.res[r]||0);
+  let s=p.stats||{};
+  if(s.troopsTrained) ['spear','sword'].forEach(u=>total.troopsTrained[u]+=s.troopsTrained[u]||0);
+  if(s.troopsLost) ['spear','sword'].forEach(u=>total.troopsLost[u]+=s.troopsLost[u]||0);
+  total.attacksSent += s.attacksSent||0;
+  total.attacksReceived += s.attacksReceived||0;
+ });
+ return `<div class="row"><small>${t('mp_players_in_room')}</small><b>${total.players}/4</b></div>
+ <div class="row"><small>🪵🧱⛏️ ${t('world_stats_res_gained')}</small><b>🪵${fmt(total.res.wood)} 🧱${fmt(total.res.clay)} ⛏️${fmt(total.res.iron)}</b></div>
+ <div class="row"><small>${t('world_stats_troops_trained')}</small><b>${unitName('spear')} ${total.troopsTrained.spear} · ${unitName('sword')} ${total.troopsTrained.sword}</b></div>
+ <div class="row"><small>${t('world_stats_troops_lost')}</small><b>${unitName('spear')} ${total.troopsLost.spear} · ${unitName('sword')} ${total.troopsLost.sword}</b></div>
+ <div class="row"><small>${t('world_stats_attacks_sent')}</small><b>${total.attacksSent}</b></div>`;
+}
+
+function renderAboutTab(){
+ return `<h2>${t('settings_tab_about')}</h2>
+ <div class="card" style="text-align:center;line-height:2">
+ <div><b>Feito Por ADM Games</b></div>
+ <div>Desenvolvedores: Alisson Macedo, Diego Macedo, Davi, Milhomem, Álvaro Falcão.</div>
+ <div style="font-size:30px;margin-top:6px">🇧🇷</div>
+ </div>`;
+}
+
+// ---- Login / Logout (perfis locais, cada um mantém sua própria aldeia) ----
+function renderLoginScreen(){
+ let el=document.getElementById('loginCard');
+ if(!el) return;
+ el.innerHTML=`<h1>${t('login_title')}</h1>
+  <p>${t('login_desc')}</p>
+  <input type="text" id="loginName" placeholder="${t('login_placeholder')}" maxlength="20">
+  <button class="act" onclick="doLogin()">${t('login_btn')}</button>
+  <div id="savedProfiles"></div>`;
+ let ln=document.getElementById('loginName');
+ if(ln) ln.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+ renderSavedProfiles();
+}
+function renderSavedProfiles(){
+ let el=document.getElementById('savedProfiles');
+ if(!el) return;
+ let profiles=listProfiles();
+ if(profiles.length===0){ el.innerHTML=''; return; }
+ el.innerHTML=`<small>${t('login_saved_profiles')}</small><div class="profile-list">${profiles.map(p=>`<button onclick="quickLogin('${p.replace(/'/g,"\\'")}')">${p}</button>`).join('')}</div>`;
+}
+function doLogin(){
+ let name=document.getElementById('loginName').value.trim();
+ if(!name){alert('!');return;}
+ startGame(name);
+}
+function quickLogin(name){ startGame(name); }
+async function startGame(name){
+ name=name.trim();
+ if(!name) return;
+ ACTIVE_PROFILE=name;
+ myId=name;
+ setActiveProfile(name);
+ S=load(name);
+ document.getElementById('loginScreen').style.display='none';
+ document.getElementById('gameRoot').style.display='block';
+ await fetchWorldSettings();
+ tick();render();renderSettingsModal();
+ if(mpReady){
+  try{ await mpEnsureJoined(); startMpPolling(); render(); }catch(e){}
+ }
+}
+function doLogoutSilent(){
+ if(!S) return;
+ save();
+ clearActiveProfile();
+ stopMpPolling();
+ ACTIVE_PROFILE=null; S=null; myId=''; mySlot=0;
+ mpPlayers={}; mpIncoming=[]; mpReports=[]; mpAttacksCache={};
+ document.getElementById('gameRoot').style.display='none';
+ document.getElementById('loginScreen').style.display='flex';
+ renderLoginScreen();
+ document.getElementById('loginName').value='';
+ renderSettingsModal();
+ updateAttackBanner();
+}
+function doLogout(){
+ if(!S) return;
+ if(!confirm(t('account_logout_confirm'))) return;
+ doLogoutSilent();
+}
+function initLoginScreen(){
+ renderLoginScreen();
+ let active=getActiveProfile();
+ if(active) startGame(active);
+}
+initLoginScreen();
+
+</script>
+</body>
+</html>

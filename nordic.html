@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reinos de Aldeia - Beta</title>
+<style>
+:root{--bg:#2b2213;--panel:#3b2f1c;--panel2:#4a3c24;--gold:#d9b458;--text:#eee0c0;--good:#7fbf5a;--bad:#c25c5c;--accent:#8a6d2f;
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,serif;font-size:14px}
+header{background:var(--panel2);padding:10px 14px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;position:sticky;top:0;z-index:5;border-bottom:2px solid var(--accent)}
+header h1{font-size:16px;margin:0;color:var(--gold);flex:1 1 100%}
+.res{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.res span b{color:var(--gold)}
+nav{display:flex;gap:6px;padding:8px;background:var(--panel);flex-wrap:wrap;overflow-x:auto}
+nav button{background:var(--panel2);color:var(--text);border:1px solid var(--accent);padding:6px 12px;border-radius:4px;cursor:pointer;font-family:inherit}
+nav button.active{background:var(--gold);color:#2b2213;font-weight:bold}
+main{padding:12px;max-width:900px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--accent);border-radius:6px;padding:10px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #4a3c2440}
+.row:last-child{border-bottom:none}
+button.act{background:var(--accent);color:var(--text);border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px}
+button.act:disabled{opacity:.4;cursor:not-allowed}
+button.skip{background:#5a4a2a;font-size:11px;padding:4px 8px}
+.bar{width:100%;background:#1e1810;border-radius:4px;height:8px;overflow:hidden;margin-top:4px}
+.bar>div{background:var(--good);height:100%}
+small{color:#c9b98a}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+h2{color:var(--gold);font-size:15px;margin:4px 0 10px}
+.report{border-left:4px solid var(--good);padding:6px 10px;margin-bottom:8px;background:var(--panel2);border-radius:4px}
+.report.lost{border-left-color:var(--bad)}
+input[type=number]{width:70px;background:#1e1810;color:var(--text);border:1px solid var(--accent);border-radius:4px;padding:4px}
+.tag{font-size:11px;color:#c9b98a}
+</style>
+</head>
+<body>
+<header>
+<h1>🏰 Reinos de Aldeia — Beta</h1>
+<div class="res" id="resBar"></div>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<script>
+const now=()=>Date.now();
+const BUILD_INFO={
+ main:{name:"Edifício Principal",desc:"Acelera todas construções e treinos."},
+ wood:{name:"Campo de Madeira",desc:"Produz madeira."},
+ clay:{name:"Poço de Argila",desc:"Produz argila."},
+ iron:{name:"Mina de Ferro",desc:"Produz ferro."},
+ store:{name:"Armazém",desc:"Aumenta capacidade de recursos."},
+ farm:{name:"Fazenda",desc:"Aumenta população máxima."},
+ barracks:{name:"Quartel",desc:"Treina tropas."}
+};
+const UNIT_INFO={
+ spear:{name:"Lanceiro",atk:10,def:15,pop:1,time:20,cost:{wood:50,clay:30,iron:10}},
+ sword:{name:"Espadachim",atk:25,def:10,pop:1,time:30,cost:{wood:30,clay:30,iron:70}}
+};
+function cost(base,level){let f=Math.pow(1.26,level);return {wood:Math.round(base.wood*f),clay:Math.round(base.clay*f),iron:Math.round(base.iron*f)};}
+function buildTime(base,level,mainLvl){let f=Math.pow(1.22,level);let speed=1+ (mainLvl-1)*0.12;return Math.round(base*f/speed);}
+const BASE_COST={main:{wood:90,clay:80,iron:70},wood:{wood:50,clay:60,iron:40},clay:{wood:65,clay:50,iron:40},iron:{wood:75,clay:65,iron:70},store:{wood:60,clay:50,iron:40},farm:{wood:45,clay:40,iron:30},barracks:{wood:200,clay:170,iron:90}};
+const BASE_TIME={main:60,wood:40,clay:40,iron:45,store:35,farm:30,barracks:80};
+
+let S=load();
+function load(){
+ let s=localStorage.getItem('tw_beta_v1');
+ if(s){try{return JSON.parse(s);}catch(e){}}
+ return {
+  res:{wood:500,clay:500,iron:500},
+  buildings:{main:1,wood:1,clay:1,iron:1,store:1,farm:1,barracks:0},
+  buildQueue:[], // {b,level,end}
+  troops:{spear:0,sword:0},
+  trainQueue:[], // {unit,qty,end,each}
+  lastTick:now(),
+  attacks:[], // outgoing {target,units:{},arriveEnd,resolved:false,type:'attack'}
+  reports:[],
+  villages: [
+   {id:1,name:"Aldeia Bárbara Norte",troops:{spear:8,sword:0},res:{wood:400,clay:300,iron:250},dist:1},
+   {id:2,name:"Aldeia Bárbara Leste",troops:{spear:15,sword:5},res:{wood:900,clay:700,iron:600},dist:2},
+   {id:3,name:"Aldeia Bárbara Sul",troops:{spear:2,sword:0},res:{wood:150,clay:100,iron:80},dist:1}
+  ]
+ };
+}
+function save(){localStorage.setItem('tw_beta_v1',JSON.stringify(S));}
+
+function storeCap(){return Math.round(1000*Math.pow(GROWTH,(S.buildings.main-1)+(S.buildings.store-1)));}
+function farmCap(){return Math.round(200*Math.pow(1.28,S.buildings.farm-1));}
+function popUsed(){return S.troops.spear*1+S.troops.sword*1 + S.trainQueue.reduce((a,t)=>a+t.qty,0);}
+const RES_BASE_PER_SEC={wood:4.5,clay:3.5,iron:1.2};
+const RES_LABEL={wood:'madeira',clay:'argila',iron:'ferro'};
+const GROWTH=1.5; // cada nível de construção aumenta 50% a produção/capacidade
+function prodPerSec(type){let lvl=S.buildings[type];return RES_BASE_PER_SEC[type]*Math.pow(GROWTH,lvl-1);}
+function prodPerHour(type){return prodPerSec(type)*3600;}
+const B_POS={main:{x:200,y:150,roof:'#b5432f',wall:'#8a6d2f'},wood:{x:70,y:65,roof:'#2f6b3a',wall:'#5a3b22'},clay:{x:330,y:65,roof:'#c07830',wall:'#8a6d2f'},iron:{x:70,y:235,roof:'#6b6b6b',wall:'#4a4a4a'},store:{x:330,y:235,roof:'#d9b458',wall:'#8a6d2f'},farm:{x:130,y:150,roof:'#7fbf5a',wall:'#5a3b22'},barracks:{x:270,y:150,roof:'#7a2020',wall:'#4a4a4a'}};
+function houseSVG(x,y,roof,wall,scale){
+ let s=scale||1;
+ return `<g transform="translate(${x},${y}) scale(${s})">
+ <polygon points="0,-22 20,-4 -20,-4" fill="${roof}" stroke="#1e1810" stroke-width="1"/>
+ <rect x="-14" y="-4" width="28" height="20" fill="${wall}" stroke="#1e1810" stroke-width="1"/>
+ </g>`;
+}
+function emptyPlotSVG(x,y){return `<g transform="translate(${x},${y})"><rect x="-16" y="-14" width="32" height="28" fill="none" stroke="#8a6d2f" stroke-dasharray="4,3" rx="4"/><text x="0" y="6" text-anchor="middle" fill="#8a6d2f" font-size="18">+</text></g>`;}
+const TREES=[[20,20],[380,20],[20,280],[380,280],[200,15],[15,150],[385,150],[200,285],[100,280],[300,280],[100,20],[300,20]];
+function treesSVG(){return TREES.map(([x,y])=>`<g transform="translate(${x},${y})"><polygon points="0,-11 7,2 -7,2" fill="#2f6b3a"/><rect x="-2" y="2" width="4" height="5" fill="#5a3b22"/></g>`).join('');}
+
+function tick(){
+ let t=now(), dt=(t-S.lastTick)/3600000;
+ ['wood','clay','iron'].forEach(r=>{S.res[r]=Math.min(storeCap(),S.res[r]+prodPerHour(r)*dt);});
+ S.lastTick=t;
+ // building queue
+ S.buildQueue=S.buildQueue.filter(q=>{
+  if(t>=q.end){S.buildings[q.b]=q.level;addLog();return false;} return true;
+ });
+ // train queue
+ S.trainQueue=S.trainQueue.filter(q=>{
+  if(t>=q.end){S.troops[q.unit]+=q.qty;return false;} return true;
+ });
+ // attacks
+ S.attacks=S.attacks.filter(a=>{
+  if(t>=a.arriveEnd){resolveAttack(a);return false;} return true;
+ });
+ save();
+}
+function addLog(){}
+
+function resolveAttack(a){
+ let v=S.villages.find(x=>x.id===a.target);
+ let atk=0; for(let u in a.units) atk+=a.units[u]*UNIT_INFO[u].atk*a.units[u]>0?a.units[u]*UNIT_INFO[u].atk:0;
+ atk=0; for(let u in a.units) atk+=a.units[u]*UNIT_INFO[u].atk;
+ let def=0; for(let u in v.troops) def+=v.troops[u]*(UNIT_INFO[u]?UNIT_INFO[u].def:8);
+ let win = atk > def;
+ let lossRatio = win? Math.min(0.3, def/(atk+1)) : 1;
+ let lost={};
+ for(let u in a.units){lost[u]=Math.round(a.units[u]*lossRatio);}
+ let loot={wood:0,clay:0,iron:0};
+ if(win){
+  let survivors=0; for(let u in a.units) survivors+=(a.units[u]-lost[u]);
+  let capacity=survivors*25;
+  ['wood','clay','iron'].forEach(r=>{let take=Math.min(v.res[r],capacity/3);loot[r]=Math.round(take);v.res[r]=Math.round(v.res[r]-take);});
+  v.troops={}; // barb troops wiped on loss (simplified)
+  for(let u in UNIT_INFO) v.troops[u]=0;
+  S.res.wood=Math.min(storeCap(),S.res.wood+loot.wood);
+  S.res.clay=Math.min(storeCap(),S.res.clay+loot.clay);
+  S.res.iron=Math.min(storeCap(),S.res.iron+loot.iron);
+ } else {
+  for(let u in a.units) lost[u]=a.units[u];
+ }
+ for(let u in a.units){S.troops[u]+=(a.units[u]-lost[u]);}
+ S.reports.unshift({time:now(),target:v.name,win,sent:a.units,lost,loot,enemyDef:def,atk});
+}
+
+function safeRender(){
+ renderHeader();
+ let ae=document.activeElement;
+ if(ae && ae.tagName==='INPUT' && document.getElementById('main').contains(ae)) return;
+ renderMain();
+}
+setInterval(()=>{tick();safeRender();},1000);
+
+let tab='village';
+function setTab(x){tab=x;render();}
+
+function fmt(n){return Math.floor(n).toLocaleString('pt-BR');}
+function countdown(end){let s=Math.max(0,Math.round((end-now())/1000));let m=Math.floor(s/60);let ss=s%60;return m+':'+String(ss).padStart(2,'0');}
+
+function render(){renderHeader();renderMain();}
+function renderHeader(){
+ document.getElementById('resBar').innerHTML=
+  `<span>🪵 <b>${fmt(S.res.wood)}</b>/${storeCap()}</span>
+   <span>🧱 <b>${fmt(S.res.clay)}</b>/${storeCap()}</span>
+   <span>⛏️ <b>${fmt(S.res.iron)}</b>/${storeCap()}</span>
+   <span>👥 <b>${popUsed()}</b>/${farmCap()}</span>`;
+ document.getElementById('nav').innerHTML=['village','barracks','map','multiplayer','reports'].map(x=>
+  `<button class="${tab===x?'active':''}" onclick="setTab('${x}')">${{village:'🏘️ Aldeia',barracks:'⚔️ Quartel',map:'🗺️ Mapa',multiplayer:'🌐 Multiplayer',reports:'📜 Relatórios'}[x]}</button>`).join('');
+}
+function renderMain(){
+ let m=document.getElementById('main');
+ if(tab==='village') m.innerHTML=renderVillage();
+ if(tab==='barracks') m.innerHTML=renderBarracks();
+ if(tab==='map') m.innerHTML=renderMap();
+ if(tab==='multiplayer') m.innerHTML=renderMultiplayer();
+ if(tab==='reports') m.innerHTML=renderReports();
+}
+
+function renderVillage(){
+ let diag=`<div class="card"><h2>Sua Aldeia</h2><svg viewBox="0 0 400 300" style="width:100%;max-width:420px;display:block;margin:0 auto;background:#3d5a2f;border-radius:6px">
+ ${treesSVG()}
+ ${Object.keys(B_POS).map(b=>{let p=B_POS[b];let lvl=S.buildings[b];
+   if(lvl<1) return emptyPlotSVG(p.x,p.y);
+   let scale=0.8+Math.min(lvl,10)*0.03;
+   return houseSVG(p.x,p.y,p.roof,p.wall,scale)+`<text x="${p.x}" y="${p.y+22}" text-anchor="middle" fill="#eee0c0" font-size="11">${BUILD_INFO[b].name.split(' ')[0]} ${lvl}</text>`;
+ }).join('')}
+ </svg></div>`;
+ let html=diag+`<h2>Construções</h2><div class="grid">`;
+ for(let b in BUILD_INFO){
+  let lvl=S.buildings[b];
+  let q=S.buildQueue.find(x=>x.b===b);
+  let c=cost(BASE_COST[b],lvl);
+  let afford=S.res.wood>=c.wood&&S.res.clay>=c.clay&&S.res.iron>=c.iron;
+  html+=`<div class="card"><b>${BUILD_INFO[b].name}</b> <span class="tag">nível ${lvl}</span><br><small>${BUILD_INFO[b].desc}</small>${buildingPreview(b)}`;
+  if(q){
+   html+=`<div class="bar"><div style="width:${100-100*(q.end-now())/(q.end-q.start)}%"></div></div>
+   <div class="row"><small>Construindo → nível ${q.level} (${countdown(q.end)})</small>
+   <button class="act skip" onclick="skipBuild('${b}')">Pular ⏩</button></div>`;
+  } else {
+   html+=`<div class="row"><small>Custo: 🪵${c.wood} 🧱${c.clay} ⛏️${c.iron} (${buildTime(BASE_TIME[b],lvl,S.buildings.main)}s)</small>
+   <button class="act" ${afford&&S.buildQueue.length<1?'':'disabled'} onclick="upgrade('${b}')">Melhorar</button></div>`;
+  }
+  html+=`</div>`;
+ }
+ html+=`</div>`;
+ return html;
+}
+function buildingPreview(b){
+ let lvl=S.buildings[b];
+ if(RES_BASE_PER_SEC[b]!==undefined){
+  let cur=prodPerSec(b), nxt=RES_BASE_PER_SEC[b]*Math.pow(GROWTH,lvl);
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">Nível ${lvl}: <b>${cur.toFixed(1)} ${RES_LABEL[b]}/s</b> → Nível ${lvl+1}: <b>${nxt.toFixed(1)} ${RES_LABEL[b]}/s</b></div>`;
+ }
+ if(b==='store'){
+  let cur=storeCap(); let nxt=Math.round(1000*Math.pow(GROWTH,(S.buildings.main-1)+lvl));
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">Nível ${lvl}: <b>${cur} de capacidade</b> → Nível ${lvl+1}: <b>${nxt} de capacidade</b></div>`;
+ }
+ if(b==='main'){
+  let curCap=storeCap(); let nxtCap=Math.round(1000*Math.pow(GROWTH,lvl+(S.buildings.store-1)));
+  let curSpeed=Math.round((1+(lvl-1)*0.12)*100); let nxtSpeed=Math.round((1+lvl*0.12)*100);
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">Nível ${lvl}: <b>${curSpeed}% velocidade, armazém ${curCap}</b> → Nível ${lvl+1}: <b>${nxtSpeed}% velocidade, armazém ${nxtCap}</b></div>`;
+ }
+ if(b==='farm'){
+  let cur=farmCap(); let nxt=Math.round(200*Math.pow(1.28,lvl));
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">Nível ${lvl}: <b>${cur} população</b> → Nível ${lvl+1}: <b>${nxt} população</b></div>`;
+ }
+ if(b==='barracks'){
+  return `<div style="color:var(--good);font-size:12px;margin:4px 0">Permite treinar tropas.</div>`;
+ }
+ return '';
+}
+function upgrade(b){
+ if(S.buildQueue.length>=1) return;
+ let lvl=S.buildings[b], c=cost(BASE_COST[b],lvl);
+ if(S.res.wood<c.wood||S.res.clay<c.clay||S.res.iron<c.iron) return;
+ S.res.wood-=c.wood;S.res.clay-=c.clay;S.res.iron-=c.iron;
+ let dur=buildTime(BASE_TIME[b],lvl,S.buildings.main)*1000;
+ S.buildQueue.push({b,level:lvl+1,start:now(),end:now()+dur});
+ save();render();
+}
+function skipBuild(b){let q=S.buildQueue.find(x=>x.b===b);if(q)q.end=now();tick();render();}
+
+function renderBarracks(){
+ if(S.buildings.barracks<1) return `<div class="card">Construa o <b>Quartel</b> (na aba Aldeia) para treinar tropas.</div>`;
+ let html=`<h2>Treinar Tropas</h2><div class="grid">`;
+ for(let u in UNIT_INFO){
+  let info=UNIT_INFO[u];
+  html+=`<div class="card"><b>${info.name}</b> <span class="tag">⚔️${info.atk} 🛡️${info.def}</span>
+  <div class="row"><small>Custo un.: 🪵${info.cost.wood} 🧱${info.cost.clay} ⛏️${info.cost.iron}, ${info.time}s</small></div>
+  <div class="row"><input type="number" min="1" value="1" id="qty_${u}"><button class="act" onclick="train('${u}')">Treinar</button></div>
+  <small>Tropas atuais: <b>${S.troops[u]}</b></small></div>`;
+ }
+ html+=`</div><h2>Fila de treino</h2>`;
+ if(S.trainQueue.length===0) html+=`<div class="card"><small>Nenhum treino em andamento.</small></div>`;
+ S.trainQueue.forEach((q,i)=>{
+  html+=`<div class="card row"><span>${UNIT_INFO[q.unit].name} x${q.qty} — ${countdown(q.end)}</span>
+  <button class="act skip" onclick="skipTrain(${i})">Pular ⏩</button></div>`;
+ });
+ return html;
+}
+function train(u){
+ let qty=parseInt(document.getElementById('qty_'+u).value)||1;
+ let info=UNIT_INFO[u];
+ let totalCost={wood:info.cost.wood*qty,clay:info.cost.clay*qty,iron:info.cost.iron*qty};
+ if(S.res.wood<totalCost.wood||S.res.clay<totalCost.clay||S.res.iron<totalCost.iron){alert('Recursos insuficientes.');return;}
+ if(popUsed()+qty>farmCap()){alert('População máxima atingida (melhore a Fazenda).');return;}
+ S.res.wood-=totalCost.wood;S.res.clay-=totalCost.clay;S.res.iron-=totalCost.iron;
+ S.trainQueue.push({unit:u,qty,end:now()+info.time*qty*1000});
+ save();render();
+}
+function skipTrain(i){S.trainQueue[i].end=now();tick();render();}
+
+const BARB_POS={1:[15,68],2:[50,18],3:[82,65]};
+const SLOT_POS=[[30,40],[65,42],[22,80],[78,15]];
+let openPlot=null;
+function togglePlot(k){openPlot=(openPlot===k)?null:k;render();}
+function renderMap(){
+ let mySlot=mpPlayers[myId]?mpPlayers[myId].slot:null;
+ let icons='';
+ S.villages.forEach(v=>{
+  let [x,y]=BARB_POS[v.id];
+  icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;cursor:pointer" onclick="togglePlot('b${v.id}')">
+   ${houseSVGwrap(52,'#8a5a2f','#5a3b22')}<div class="tag">${v.name.split(' ')[2]||v.name}</div></div>`;
+ });
+ for(let i=0;i<4;i++){
+  let [x,y]=SLOT_POS[i];
+  let occ=Object.values(mpPlayers).find(p=>p.slot===i);
+  if(occ && occ.name===myId){
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center">${houseSVGwrap(56,'#d9b458','#8a6d2f')}<div class="tag"><b>Você</b></div></div>`;
+  } else if(occ){
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;cursor:pointer" onclick="togglePlot('p${i}')">${houseSVGwrap(52,'#3a6fa0','#22405a')}<div class="tag">${occ.name}</div></div>`;
+  } else {
+   icons+=`<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%);text-align:center;color:#8a6d2f;font-size:22px">+<div class="tag">vazio</div></div>`;
+  }
+ }
+ let html=`<h2>Mapa do Mundo</h2><div class="card" style="position:relative;height:340px;background:#3d5a2f;overflow:hidden">
+  <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%" preserveAspectRatio="none">
+  ${[[8,8],[92,8],[8,92],[92,92],[45,5],[5,45],[95,45],[45,95],[60,90],[30,10]].map(([x,y])=>`<g transform="translate(${x},${y})"><polygon points="0,-3 2,0.5 -2,0.5" fill="#2f6b3a"/></g>`).join('')}
+  </svg>${icons}</div>`;
+ if(openPlot&&openPlot[0]==='b'){
+  let v=S.villages.find(x=>x.id===parseInt(openPlot.slice(1)));
+  let atkInProg=S.attacks.find(a=>a.target===v.id);
+  html+=`<div class="card"><b>${v.name}</b><br><small>Defesa: lanceiros ${v.troops.spear}, espadachins ${v.troops.sword} | Recursos: 🪵${Math.round(v.res.wood)} 🧱${Math.round(v.res.clay)} ⛏️${Math.round(v.res.iron)}</small>`;
+  html+= atkInProg? `<div class="row"><small>A caminho — ${countdown(atkInProg.arriveEnd)}</small><button class="act skip" onclick="skipAttack(${v.id})">Pular ⏩</button></div>`
+   : `<div class="row">Lanceiros:<input type="number" min="0" value="0" id="send_spear_${v.id}" style="width:55px">Espadachins:<input type="number" min="0" value="0" id="send_sword_${v.id}" style="width:55px"><button class="act" onclick="sendAttack(${v.id})">Atacar</button></div>`;
+  html+=`</div>`;
+ }
+ if(openPlot&&openPlot[0]==='p'){
+  let i=parseInt(openPlot.slice(1));
+  let occ=Object.values(mpPlayers).find(p=>p.slot===i);
+  if(occ){
+   html+=`<div class="card"><b>${occ.name}</b><br><small>Tropas: lanceiros ${occ.troops?.spear||0}, espadachins ${occ.troops?.sword||0}</small>
+   <div class="row">Lanceiros:<input type="number" min="0" value="0" id="mpsend_spear_${occ.name}" style="width:55px">Espadachins:<input type="number" min="0" value="0" id="mpsend_sword_${occ.name}" style="width:55px"><button class="act" onclick="mpAttack('${occ.name}')">Atacar</button></div></div>`;
+  }
+ }
+ return html;
+}
+function houseSVGwrap(size,roof,wall){return `<svg viewBox="-20 -24 40 44" width="${size}" height="${size}">${houseSVG(0,0,roof,wall,1)}</svg>`;}
+function sendAttack(id){
+ let v=S.villages.find(x=>x.id===id);
+ let sp=parseInt(document.getElementById('send_spear_'+id).value)||0;
+ let sw=parseInt(document.getElementById('send_sword_'+id).value)||0;
+ if(sp>S.troops.spear||sw>S.troops.sword||(sp+sw)<=0){alert('Tropas insuficientes.');return;}
+ S.troops.spear-=sp;S.troops.sword-=sw;
+ let travel=v.dist*30*1000; // 30s per distance unit for testing
+ S.attacks.push({target:id,units:{spear:sp,sword:sw},arriveEnd:now()+travel});
+ save();render();
+}
+function skipAttack(id){let a=S.attacks.find(x=>x.target===id);if(a)a.arriveEnd=now();tick();render();}
+
+function renderReports(){
+ let all=[...S.reports.map(r=>({...r,mp:false})), ...mpReports.map(r=>({time:r.time,target:(r.to===myId?('você'):r.to)+(r.from===myId?'':' → atacou você'),win:r.win,sent:r.sent,lost:r.lost,loot:r.loot,atk:0,enemyDef:0,mp:true,from:r.from,to:r.to}))].sort((a,b)=>b.time-a.time);
+ if(all.length===0) return `<div class="card"><small>Nenhum relatório ainda. Envie um ataque!</small></div>`;
+ return all.map(r=>{
+  if(r.mp){
+   let sentStr=Object.entries(r.sent).map(([u,q])=>`${UNIT_INFO[u].name} ${q}`).join(', ');
+   let lostStr=Object.entries(r.lost).map(([u,q])=>`${UNIT_INFO[u].name} -${q}`).join(', ');
+   let lootStr=`🪵${r.loot.wood} 🧱${r.loot.clay} ⛏️${r.loot.iron}`;
+   return `<div class="report ${r.win?'':'lost'}"><b>${r.win?'✅ Vitória':'❌ Derrota'}</b> — <b>${r.from}</b> atacou <b>${r.to}</b> — ${new Date(r.time).toLocaleTimeString('pt-BR')}<br>
+   <small>Enviado: ${sentStr}</small><br><small>Perdas: ${lostStr||'nenhuma'}</small><br>${r.win?`<small>Saque: ${lootStr}</small>`:''}</div>`;
+  }
+  return renderOldReport(r);
+ }).join('');
+}
+function renderOldReport(r){
+  let sentStr=Object.entries(r.sent).map(([u,q])=>`${UNIT_INFO[u].name} ${q}`).join(', ');
+  let lostStr=Object.entries(r.lost).map(([u,q])=>`${UNIT_INFO[u].name} -${q}`).join(', ');
+  let lootStr=`🪵${r.loot.wood} 🧱${r.loot.clay} ⛏️${r.loot.iron}`;
+  return `<div class="report ${r.win?'':'lost'}">
+   <b>${r.win?'✅ Vitória':'❌ Derrota'}</b> contra <b>${r.target}</b> — ${new Date(r.time).toLocaleTimeString('pt-BR')}<br>
+   <small>Enviado: ${sentStr}</small><br>
+   <small>Perdas: ${lostStr||'nenhuma'}</small><br>
+   <small>Poder atacante: ${Math.round(r.atk)} vs defesa inimiga: ${Math.round(r.enemyDef)}</small><br>
+   ${r.win?`<small>Saque: ${lootStr}</small>`:''}
+  </div>`;
+}
+
+// ---- Multiplayer (até 4 jogadores, via nuvem, sem servidor próprio) ----
+let db=null, mpReady=false, myId=localStorage.getItem('tw_mp_id')||'';
+let mpPlayers={}, mpIncoming=[], mpReports=[];
+(async()=>{
+ db=await claude.use('db');
+ if(!db) return;
+ mpReady=true;
+ if(myId) await mpSubscribe();
+ render();
+})();
+let mySlot=parseInt(localStorage.getItem('tw_mp_slot'));
+async function mpJoin(){
+ let name=document.getElementById('mpName').value.trim();
+ if(!name){alert('Digite um nome.');return;}
+ let existing=await db.collection('players').get();
+ let docs=(existing&&existing.docs)?existing.docs:[];
+ let ids=docs.map(d=>d.id);
+ if(ids.includes(name)){ mySlot=(docs.find(d=>d.id===name).data?docs.find(d=>d.id===name).data():docs.find(d=>d.id===name)).slot; }
+ else if(ids.length>=4){alert('Sala cheia (máx. 4 jogadores).');return;}
+ else { let used=docs.map(d=>(d.data?d.data():d).slot); mySlot=[0,1,2,3].find(s=>!used.includes(s)); }
+ myId=name; localStorage.setItem('tw_mp_id',myId); localStorage.setItem('tw_mp_slot',mySlot);
+ await mpSync();
+ await mpSubscribe();
+ render();
+}
+async function mpSync(){
+ if(!db||!myId) return;
+ try{await db.doc('players/'+myId).set({name:myId,slot:mySlot,res:S.res,buildings:S.buildings,troops:S.troops,updated:now()});}catch(e){}
+}
+async function mpSubscribe(){
+ db.collection('players').onSnapshot(snap=>{
+  mpPlayers={};
+  (snap.docs||[]).forEach(d=>{mpPlayers[d.id]=d.data?d.data():d;});
+  safeRender();
+ });
+ db.collection('attacks').where('to','==',myId).onSnapshot(snap=>{
+  mpIncoming=(snap.docs||[]).map(d=>({id:d.id,...(d.data?d.data():d)}));
+  mpIncoming.forEach(a=>{ if(!a.resolved && now()>=a.arriveEnd) mpResolve(a); });
+  safeRender();
+ });
+ db.collection('reports').where('participants','array-contains',myId).onSnapshot(snap=>{
+  mpReports=(snap.docs||[]).map(d=>d.data?d.data():d).sort((a,b)=>b.time-a.time);
+  safeRender();
+ });
+}
+async function mpAttack(targetId){
+ let sp=parseInt(document.getElementById('mpsend_spear_'+targetId).value)||0;
+ let sw=parseInt(document.getElementById('mpsend_sword_'+targetId).value)||0;
+ if(sp>S.troops.spear||sw>S.troops.sword||(sp+sw)<=0){alert('Tropas insuficientes.');return;}
+ S.troops.spear-=sp;S.troops.sword-=sw; save(); await mpSync();
+ await db.collection('attacks').add({from:myId,to:targetId,units:{spear:sp,sword:sw},sentAt:now(),arriveEnd:now()+45000,resolved:false});
+ render();
+}
+async function mpResolve(a){
+ a.resolved=true;
+ let def=mpPlayers[a.to]||{troops:{spear:0,sword:0},res:{wood:0,clay:0,iron:0}};
+ let atk=0; for(let u in a.units) atk+=a.units[u]*UNIT_INFO[u].atk;
+ let defp=0; for(let u in def.troops||{}) defp+=(def.troops[u]||0)*(UNIT_INFO[u]?UNIT_INFO[u].def:10);
+ let win=atk>defp;
+ let lossRatio=win?Math.min(0.3,defp/(atk+1)):1;
+ let lost={}; for(let u in a.units) lost[u]=Math.round(a.units[u]*lossRatio);
+ let loot={wood:0,clay:0,iron:0};
+ if(win){
+  let survivors=0; for(let u in a.units) survivors+=(a.units[u]-lost[u]);
+  let cap=survivors*25;
+  ['wood','clay','iron'].forEach(r=>{let av=(def.res&&def.res[r])||0;let take=Math.min(av,cap/3);loot[r]=Math.round(take);});
+  if(a.to===myId){ ['wood','clay','iron'].forEach(r=>{S.res[r]=Math.max(0,S.res[r]-loot[r]);});
+   for(let u in a.units) S.troops[u]=Math.max(0,S.troops[u]-lost[u]);
+   save(); await mpSync();
+  }
+ }
+ if(a.from===myId){
+  for(let u in a.units) S.troops[u]+=(a.units[u]-lost[u]);
+  ['wood','clay','iron'].forEach(r=>{S.res[r]=Math.min(storeCap(),S.res[r]+loot[r]);});
+  save(); await mpSync();
+ }
+ try{
+  await db.doc('attacks/'+a.id).update({resolved:true});
+  await db.collection('reports').add({from:a.from,to:a.to,win,sent:a.units,lost,loot,time:now(),participants:[a.from,a.to]});
+ }catch(e){}
+}
+function renderMultiplayer(){
+ if(!mpReady) return `<div class="card"><small>Recurso de multiplayer indisponível neste momento.</small></div>`;
+ if(!myId) return `<div class="card"><h2>Entrar na sala (até 4 jogadores)</h2>
+  <input type="text" id="mpName" placeholder="Seu nome"><button class="act" onclick="mpJoin()">Entrar</button>
+  <br><br><small>Cada jogador entra pelo mesmo link, no próprio celular, usando a internet — sem precisar de servidor próprio. Vá na aba Mapa pra ver e atacar as aldeias dos outros.</small></div>`;
+ let ids=Object.keys(mpPlayers);
+ return `<div class="card"><small>Jogando como <b>${myId}</b> (parcela ${mySlot+1}) — ${ids.length}/4 jogadores na sala.<br>Vá na aba 🗺️ Mapa pra ver as aldeias e atacar.</small></div>`;
+}
+
+tick();render();
+setInterval(()=>{ if(mpReady&&myId) mpSync(); },4000);
+</script>
+</body>
+</html>
