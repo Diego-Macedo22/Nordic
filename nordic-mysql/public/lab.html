@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nordic — Laboratório multiplayer</title>
+<style>
+:root{color-scheme:dark;--bg:#12232c;--panel:#213740;--gold:#e4bf82;--text:#e8ede7;--muted:#a9c0b8}
+*{box-sizing:border-box}body{font:16px system-ui,sans-serif;background:linear-gradient(145deg,#1c3944,var(--bg));color:var(--text);margin:0;min-height:100vh}
+main{max-width:780px;margin:auto;padding:25px 16px}h1,h2{font-family:Georgia,serif;color:var(--gold)}h1{font-size:34px}h2{font-size:20px}
+.card{background:var(--panel);border:1px solid #58777c;border-radius:12px;padding:18px;margin:15px 0;box-shadow:0 8px 18px #09161b50}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}.grid .card{margin:0}
+input{background:#10232d;color:var(--text);border:1px solid #819794;border-radius:6px;padding:9px;margin:5px 0;width:100%;font:inherit}
+button{background:#a47d4d;color:#fff;border:0;border-radius:7px;padding:9px 13px;margin:5px 4px 5px 0;cursor:pointer;font:inherit}button:hover{background:#bd945f}button:disabled{opacity:.5}
+small,.muted{color:var(--muted)}.error{color:#ffb4a8}.success{color:#ade7c2}.row{border-top:1px solid #62777b66;padding:10px 0}.troop{width:72px;display:inline-block}#room{display:none}
+</style>
+</head>
+<body><main>
+<h1>🪓 NORDIC <small>· Laboratório</small></h1>
+<p>Abra esta página em duas abas. Crie um mundo na primeira e entre com outro apelido na segunda usando o código. As duas abas verão as mesmas aldeias e os ataques gravados no MySQL.</p>
+<p class="muted">Protótipo de teste: as tropas começam com 12 guerreiros de lança e 8 berserkers. Aqui as batalhas são imediatas; economia, tempo de viagem e login do jogo principal ainda não estão conectados.</p>
+<div id="entry" class="grid">
+ <section class="card"><h2>Criar mundo</h2><input id="newWorld" maxlength="50" placeholder="Nome do mundo"><input id="hostName" maxlength="24" placeholder="Seu apelido"><button onclick="createWorld()">Criar mundo</button></section>
+ <section class="card"><h2>Entrar no mundo</h2><input id="joinCode" maxlength="14" placeholder="Código N-..."><input id="guestName" maxlength="24" placeholder="Outro apelido"><button onclick="joinWorld()">Entrar</button></section>
+</div>
+<p id="notice" role="status"></p>
+<div id="room">
+ <section class="card"><h2 id="worldTitle"></h2><p>Código para a outra aba: <strong id="code"></strong></p><p>Você joga como <strong id="identity"></strong>.</p><button onclick="leave()">Sair desta aba</button></section>
+ <section class="card"><h2>Aldeias</h2><div id="players"></div></section>
+ <section class="card"><h2>Relatórios</h2><div id="reports"></div></section>
+</div>
+<p><a href="/" style="color:var(--gold)">Abrir o jogo Nordic atual</a></p>
+</main>
+<script>
+let session = null;
+let timer = null;
+const $ = id => document.getElementById(id);
+const escapeHTML = x => String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function say(message, error=false){$('notice').className=error?'error':'success';$('notice').textContent=message;}
+async function request(url, options={}){
+ const res=await fetch(url,{...options,headers:{'Content-Type':'application/json'},cache:'no-store'});
+ const data=await res.json();if(!res.ok)throw new Error(data.error||'Erro na comunicação.');return data;
+}
+async function createWorld(){
+ try{
+  let data=await request('/api/worlds',{method:'POST',body:JSON.stringify({name:$('newWorld').value,nickname:$('hostName').value})});
+  open(data.world.code,data.world.name,data.player);
+ }catch(e){say(e.message,true);}
+}
+async function joinWorld(){
+ try{
+  let code=$('joinCode').value.trim().toUpperCase();
+  let world=await request('/api/worlds/'+encodeURIComponent(code));
+  let data=await request('/api/worlds/'+encodeURIComponent(code)+'/join',{method:'POST',body:JSON.stringify({nickname:$('guestName').value})});
+  open(code,world.world.name,data.player);
+ }catch(e){say(e.message,true);}
+}
+function open(code,name,player){
+ session={code,name,player};sessionStorage.setItem('nordic_lab',JSON.stringify(session));
+ $('entry').style.display='none';$('room').style.display='block';$('worldTitle').textContent=name;
+ $('code').textContent=code;$('identity').textContent=player.nickname;
+ say('Mundo conectado.');refresh();if(timer)clearInterval(timer);timer=setInterval(refresh,3000);
+}
+function leave(){sessionStorage.removeItem('nordic_lab');session=null;if(timer)clearInterval(timer);timer=null;$('room').style.display='none';$('entry').style.display='grid';say('Saiu desta aba.');}
+async function refresh(){
+ if(!session)return;
+ try{
+  let root='/api/worlds/'+encodeURIComponent(session.code);
+  const [people,battles]=await Promise.all([request(root+'/players'),request(root+'/attacks')]);
+  const playerList=$('players');
+  const values=Object.fromEntries(Array.from(playerList.querySelectorAll('input[id]')).map(input=>[input.id,input.value]));
+  const editing=playerList.contains(document.activeElement)&&document.activeElement?.matches('input');
+  if(!editing)playerList.innerHTML=people.players.map(p=>`<div class="row"><b>${escapeHTML(p.nickname)}</b> ${p.id===session.player.id?'(você)':''}<br><small>🪓 ${p.spear} guerreiros de lança · ⚔️ ${p.sword} berserkers · ${p.wins} vitórias</small>${p.id===session.player.id?'':`<div><label>🪓 <input class="troop" type="number" min="0" id="spear_${p.id}" value="12"></label> <label>⚔️ <input class="troop" type="number" min="0" id="sword_${p.id}" value="8"></label> <button onclick="attack(${p.id})">Atacar</button></div>`}</div>`).join('');
+  if(!editing)for(const [id,value] of Object.entries(values)){const input=$(id);if(input)input.value=value;}
+  $('reports').innerHTML=battles.reports.length?battles.reports.map(a=>`<div class="row">${a.victory?'✅':'❌'} ${escapeHTML(a.attacker)} atacou ${escapeHTML(a.defender)} · 🪓${a.spear} ⚔️${a.sword}</div>`).join(''):'<small>Nenhum ataque ainda.</small>';
+ }catch(e){say(e.message,true);}
+}
+async function attack(defenderId){
+ let spear=Number($('spear_'+defenderId).value),sword=Number($('sword_'+defenderId).value);
+ try{
+  let d=await request('/api/worlds/'+encodeURIComponent(session.code)+'/attacks',{method:'POST',body:JSON.stringify({attackerId:session.player.id,defenderId,spear,sword})});
+  say(d.report.victory?'Vitória! Ataque gravado no MySQL.':'Derrota! Ataque gravado no MySQL.');await refresh();
+ }catch(e){say(e.message,true);}
+}
+try{let stored=JSON.parse(sessionStorage.getItem('nordic_lab')||'null');if(stored?.code&&stored?.player?.id)open(stored.code,stored.name,stored.player);}catch(e){}
+</script>
+</body>
+</html>
