@@ -84,7 +84,6 @@ select{background:#10212b;color:#ebeee8;border:1px solid #688b91;border-radius:5
 #world-viewport{height:500px;max-height:65vh;min-height:320px;position:relative;overflow:hidden;background:#3c6470;border:1px solid #91aaa0;border-radius:10px;touch-action:none;cursor:grab;user-select:none;isolation:isolate}#world-viewport.dragging{cursor:grabbing}#world-viewport:focus-visible{outline:2px solid var(--gold)}
 #world-terrain{position:absolute;left:0;top:0;width:2600px;height:1800px;transform-origin:0 0;pointer-events:none}#world-markers{position:absolute;inset:0;pointer-events:none}
 .world-marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:112px;padding:0;border:0;background:transparent;color:#f4e9d1;font-family:inherit;pointer-events:auto;cursor:pointer;line-height:1.15}.world-marker svg{filter:drop-shadow(0 2px 2px #193932);pointer-events:none}.marker-name{font-size:11px;background:#192d33eb;border:1px solid #b8a279;padding:3px 5px;border-radius:4px;max-width:112px;white-space:normal}.marker-level{font-size:10px;background:#49342dea;padding:2px 5px;border-radius:0 0 4px 4px}.owned .marker-level{background:#254e3c}.owned .marker-name{border-color:#86c7a2}.world-marker:hover,.world-marker:focus-visible{z-index:3;filter:brightness(1.2);outline:none}.world-marker:focus-visible .marker-name{outline:2px solid var(--gold)}
-.marker-coord{display:none;background:#142932e9;border:1px solid #cab88e;border-radius:4px;padding:2px 5px;font-size:11px;white-space:nowrap}.world-marker:hover .marker-coord,.world-marker:focus-visible .marker-coord{display:block}
 .world-marker[data-key="home"] .marker-name{position:absolute;bottom:100%;margin-bottom:14px}.world-marker[data-key="home"] .marker-level{position:absolute;bottom:100%;margin-bottom:0}
 .map-compass,.map-scale{position:absolute;pointer-events:none;background:#142932dd;border-radius:5px;padding:6px 9px;color:#ecddb6;right:10px}.map-compass{top:10px}.map-scale{bottom:10px}#map-detail{margin-top:12px}#map-detail details{padding:10px 0}#map-detail summary{cursor:pointer;color:var(--gold)}
 </style>
@@ -127,7 +126,7 @@ const I18N={
   build_wood_name:"Bosque de Pinheiros", build_wood_wild:"Floresta de Pinheiros", build_wood_desc:"Produz madeira.",
   build_clay_name:"Pedreira do Fiorde", build_clay_desc:"Produz argila.",
   build_iron_name:"Forja de Ferro", build_iron_desc:"Produz ferro.",
-  build_store_name:"Armazém", build_store_desc:"Aumenta capacidade de recursos.",
+  build_store_name:"Depósito do Clã", build_store_desc:"Aumenta capacidade de recursos.",
   build_farm_name:"Casas Longas", build_farm_desc:"Amplia a moradia e a capacidade da aldeia.",
   build_barracks_name:"Salão dos Guerreiros", build_barracks_desc:"Treina tropas.",
   building_level:"nível", building_cost:"Custo:", building_upgrade_btn:"Melhorar", building_building:"Construindo → nível", skip_btn:"Pular ⏩",
@@ -169,7 +168,7 @@ const I18N={
   world_stats_buildings_title:"Construções e bônus atuais", world_stats_map_title:"Estatísticas Gerais do Mundo",
   world_stats_map_desc:"Somatório de todos os jogadores da sala.",
   build_meat_name:"Casa de Carne", build_meat_desc:"Produz comida para sustentar guerreiros e aldeões.",
-  build_tavern_name:"Taberna", build_tavern_desc:"Até +50% de felicidade em 20 níveis. Centro de pesquisa e melhoria das tropas.",
+  build_tavern_name:"Taberna", build_tavern_desc:"Eleva a felicidade da tropa em 10 pontos por nível (máx. 50). Nível máximo: 5.",
   food_label:"Comida", population_label:"População", happiness_label:"Felicidade", victory_rate:"Vitórias", combat_bonus:"Bônus de combate", food_support:"Suporte alimentar", food_shortage:"Comida insuficiente para sustentar mais tropas. Construa ou melhore a Casa de Carne.", housing_shortage:"Capacidade de moradia insuficiente. Melhore o Salão da Vila e as Casas Longas.", tavern_max:"Nível máximo", battle_hint:"Felicidade a partir de 60% fortalece ataque, defesa e velocidade de ataque. Vitória em 75% ou mais das batalhas melhora o ânimo.",
   menu_new:"Criar um mundo", menu_new_desc:"Comece um novo fiorde e uma aldeia com dados do zero.", menu_join:"Entrar no mundo de um amigo", menu_join_desc:"Use o código que o criador do mundo compartilhou.", menu_return:"Mundos neste dispositivo", menu_world_name:"Nome do mundo", menu_player:"Nome do perfil", menu_code:"Código do mundo", menu_create:"Criar mundo e aldeia", menu_enter:"Entrar neste mundo", menu_back:"← Voltar", menu_share:"Compartilhe este código com seus amigos:", menu_local:"Neste arquivo HTML, os dados dos perfis ficam neste navegador. Para entrar do dispositivo de um amigo e sincronizar batalhas é necessário hospedagem com armazenamento compartilhado; sem ele, códigos funcionam somente neste dispositivo.", menu_missing:"Mundo não encontrado. Confira o código ou a conexão compartilhada.", menu_error:"Preencha o nome do mundo e do perfil.", menu_legacy:"Mundo anterior", world_refresh:"Atualizar estatísticas", build_wall_name:"Muralha", build_wall_desc:"Cerca a aldeia e aumenta a defesa em 10% por nível.",
   build_first_btn:"Construir", tower_title:"Torres de Vigia", tower_name:"Torre", tower_desc:"Desbloqueadas no nível 15 da muralha. Cada nível acrescenta 5% de defesa.", tower_unlock:"Disponível a partir do nível 15 da Muralha", tower_defense:"Defesa das torres", unit_catapult_name:"Catapulta", unit_unlock:"Desbloqueia no nível 10 do Salão dos Guerreiros", queue_one_by_one:"Treino individual, uma unidade por vez",
@@ -305,20 +304,10 @@ const I18N={
 let LANG=(function(){try{return localStorage.getItem('tw_lang')||'pt';}catch(e){return 'pt';}})();
 function setLang(l){ LANG=l; try{localStorage.setItem('tw_lang',l);}catch(e){} render(); renderSettingsModal(); if(!S) renderLoginScreen(); updateAttackBanner(); }
 function t(key){ let d=I18N[LANG]||I18N.pt; return d[key]!==undefined? d[key] : (I18N.pt[key]!==undefined? I18N.pt[key] : key); }
-function buildName(b){return EXTRA_BUILD_NAMES[LANG]?.[b]||EXTRA_BUILD_NAMES.pt[b]||(b==='wood'&&S&&S.buildings.wood===0?t('build_wood_wild'):t('build_'+b+'_name'));}
-function buildDesc(b){return ({stable:'Treina cavalaria leve e pesada.',workshop:'Constrói aríetes e catapultas.',market:'Permite negociar recursos entre perfis deste mundo.'})[b]||t('build_'+b+'_desc');}
-function unitName(u){return EXTRA_UNITS[LANG]?.[u]||EXTRA_UNITS.pt[u]||t('unit_'+u+'_name');}
-const BUILD_KEYS=['main','wood','clay','iron','store','farm','meat','barracks','tavern','wall','stable','workshop','market'];
-const EXTRA_BUILD_NAMES={pt:{store:'Armazém',stable:'Estábulo',workshop:'Oficina',market:'Mercado'},en:{store:'Warehouse',stable:'Stable',workshop:'Workshop',market:'Market'},es:{store:'Almacén',stable:'Establo',workshop:'Taller',market:'Mercado'}};
-const EXTRA_UNITS={pt:{sword:'Berserker',spear:'Lanceiro',spy:'Espião',swordsman:'Espadachim',archer:'Arqueiro',ram:'Aríete',lightCavalry:'Cavalaria Leve',heavyCavalry:'Cavalaria Pesada',catapult:'Catapulta'},en:{sword:'Berserker',spear:'Spearman',spy:'Scout',swordsman:'Swordsman',archer:'Archer',ram:'Battering Ram',lightCavalry:'Light Cavalry',heavyCavalry:'Heavy Cavalry',catapult:'Catapult'},es:{sword:'Berserker',spear:'Lancero',spy:'Espía',swordsman:'Espadachín',archer:'Arquero',ram:'Ariete',lightCavalry:'Caballería Ligera',heavyCavalry:'Caballería Pesada',catapult:'Catapulta'}};
-const UNIT_ROLE={spear:'def',spy:'def',swordsman:'def',archer:'def',sword:'atk',catapult:'atk',ram:'atk',lightCavalry:'both',heavyCavalry:'both'};
-const UNIT_BUILDING={catapult:'workshop',ram:'workshop',lightCavalry:'stable',heavyCavalry:'stable'};
-const RESEARCH_LEVELS=[{tavern:3,barracks:5,special:2},{tavern:8,barracks:10,special:5},{tavern:15,barracks:15,special:10}];
-function requiredBuilding(u){return UNIT_BUILDING[u]||'barracks';}
-function buildingRequirements(b){const req={stable:{main:10,tavern:5,barracks:10},workshop:{main:15,tavern:10,barracks:15},market:{main:5,store:5}};return req[b]||{};}
-function hasBuildingRequirements(b){return Object.entries(buildingRequirements(b)).every(([k,n])=>S.buildings[k]>=n);}
-function requirementText(b){return Object.entries(buildingRequirements(b)).map(([k,n])=>`${buildName(k)} ${n}`).join(' · ');}
-
+function buildName(b){return b==='wood'&&S&&S.buildings.wood===0?t('build_wood_wild'):t('build_'+b+'_name');}
+function buildDesc(b){return t('build_'+b+'_desc');}
+function unitName(u){return t('unit_'+u+'_name');}
+const BUILD_KEYS=['main','wood','clay','iron','store','farm','meat','barracks','tavern','wall'];
 
 // =========================================================
 // ---- Configurações do mundo (editor de mundo) ----
@@ -336,13 +325,7 @@ function defaultCFG(){
   units:{
    spear:{atk:10,def:15,pop:1,time:20,cost:{wood:50,clay:30,iron:10}},
    sword:{atk:25,def:10,pop:1,time:30,cost:{wood:30,clay:30,iron:70}},
-   catapult:{atk:140,def:6,hp:90,pop:5,time:180,cost:{wood:260,clay:350,iron:180}},
-   spy:{atk:3,def:18,hp:120,pop:1,time:35,cost:{wood:90,clay:55,iron:80}},
-   swordsman:{atk:12,def:27,hp:135,pop:1,time:40,cost:{wood:70,clay:75,iron:110}},
-   archer:{atk:14,def:23,hp:110,pop:1,time:38,cost:{wood:100,clay:55,iron:75}},
-   ram:{atk:100,def:9,hp:130,pop:6,time:210,cost:{wood:370,clay:450,iron:200}},
-   lightCavalry:{atk:48,def:42,hp:130,pop:3,time:95,cost:{wood:200,clay:160,iron:270}},
-   heavyCavalry:{atk:82,def:75,hp:170,pop:5,time:160,cost:{wood:330,clay:310,iron:470}}
+   catapult:{atk:140,def:6,pop:5,time:180,cost:{wood:260,clay:350,iron:180}}
   }
  };
 }
@@ -373,14 +356,14 @@ async function fetchWorldSettings(){
 const BUILD_INFO_DESC_ONLY=null; // (mantido apenas como marcador; nomes/descrições agora vêm de t())
 function cost(base,level){let f=Math.pow(1.26,level);return {wood:Math.round(base.wood*f),clay:Math.round(base.clay*f),iron:Math.round(base.iron*f)};}
 function buildTime(base,level,mainLvl){let f=Math.pow(1.22,level);let speed=1+ (mainLvl-1)*CFG.mainSpeedPerLevel;return Math.round(base*f/speed);}
-const BASE_COST={meat:{wood:150,clay:120,iron:90},tavern:{wood:1400,clay:1100,iron:900},main:{wood:90,clay:80,iron:70},wood:{wood:50,clay:60,iron:40},clay:{wood:65,clay:50,iron:40},iron:{wood:75,clay:65,iron:70},store:{wood:60,clay:50,iron:40},farm:{wood:45,clay:40,iron:30},barracks:{wood:200,clay:170,iron:90},wall:{wood:250,clay:200,iron:110},stable:{wood:950,clay:650,iron:1200},workshop:{wood:1700,clay:1500,iron:1350},market:{wood:700,clay:650,iron:500}};
-const BASE_TIME={meat:65,tavern:240,main:60,wood:40,clay:40,iron:45,store:35,farm:30,barracks:80,wall:120,stable:190,workshop:240,market:140};
+const BASE_COST={meat:{wood:150,clay:120,iron:90},tavern:{wood:1400,clay:1100,iron:900},main:{wood:90,clay:80,iron:70},wood:{wood:50,clay:60,iron:40},clay:{wood:65,clay:50,iron:40},iron:{wood:75,clay:65,iron:70},store:{wood:60,clay:50,iron:40},farm:{wood:45,clay:40,iron:30},barracks:{wood:200,clay:170,iron:90},wall:{wood:250,clay:200,iron:110}};
+const BASE_TIME={meat:65,tavern:240,main:60,wood:40,clay:40,iron:45,store:35,farm:30,barracks:80,wall:120};
 
 // ---- Estatísticas (para a aba Mundo) ----
 function defaultStats(){
  return {
   resGained:{wood:0,clay:0,iron:0}, resSpent:{wood:0,clay:0,iron:0},
-  troopsTrained:{}, troopsLost:{},
+  troopsTrained:{spear:0,sword:0,catapult:0}, troopsLost:{spear:0,sword:0,catapult:0},
   attacksSent:0, attacksSentWon:0, attacksSentLost:0,
   attacksReceived:0, attacksReceivedWon:0, attacksReceivedLost:0
  };
@@ -412,22 +395,20 @@ function listProfiles(){
 function defaultState(){
  return {
   res:{wood:500,clay:500,iron:500},
-  buildings:{main:1,wood:0,clay:0,iron:0,store:0,farm:0,meat:0,barracks:0,tavern:0,wall:0,stable:0,workshop:0,market:0},
+  buildings:{main:1,wood:0,clay:0,iron:0,store:0,farm:0,meat:0,barracks:0,tavern:0,wall:0},
   towers:[0,0,0,0],
   food:1000,
   buildQueue:[], // {b,level,end}
-  troops:{spear:0,sword:0,catapult:0,spy:0,swordsman:0,archer:0,ram:0,lightCavalry:0,heavyCavalry:0},
-  research:{unlocked:{spear:true,sword:true},upgrades:{}}, researchQueue:[],rebuildDebt:{},
+  troops:{spear:0,sword:0,catapult:0},
   trainQueue:[], // cada entrada é uma tropa {unit,end}
   lastTick:now(),
   attacks:[], // outgoing {target,units:{},arriveEnd,resolved:false,type:'attack'}
   reports:[],
-  joinedAt:now(),relocated:false,homePos:null,homeSector:'center',shipments:[],
   stats:defaultStats(),
   villages: createWorldVillages()
  };
 }
-const SETTLEMENT_FIELDS=['rebuildDebt','res','buildings','towers','food','troops','buildQueue','trainQueue','attacks','lastTick','stats','research','researchQueue'];
+const SETTLEMENT_FIELDS=['res','buildings','towers','food','troops','buildQueue','trainQueue','attacks','lastTick','stats'];
 const HOME_POS={x:550,y:850};
 function createWorldVillages(){
  const rows=[
@@ -445,7 +426,7 @@ function createWorldVillages(){
  [12,'Vila do Trovão',2090,940,23,410,350,70,18,9000,10000,5000],
  [13,'Vila de Valhalla',2370,240,25,500,500,100,20,10000,14000,6000]
  ];
- return rows.map(([id,name,x,y,level,spear,sword,catapult,wall,wood,clay,iron])=>({id,name,x,y,level,troops:{spear,sword,catapult},res:{wood,clay,iron},buildings:{main:level,wood:Math.max(1,level-1),clay:level,iron:Math.max(1,level-2),store:Math.max(3,level-1),farm:level,meat:level,barracks:Math.max(catapult?10:1,level-2),tavern:Math.min(20,Math.floor(level/2)),wall,stable:level>=12?level-9:0,workshop:level>=17?level-14:0,market:level>=8?level-5:0},towers:wall>=15?[1,1,1,1]:[0,0,0,0]}));
+ return rows.map(([id,name,x,y,level,spear,sword,catapult,wall,wood,clay,iron])=>({id,name,x,y,level,troops:{spear,sword,catapult},res:{wood,clay,iron},buildings:{main:level,wood:Math.max(1,level-1),clay:level,iron:Math.max(1,level-2),store:Math.max(3,level-1),farm:level,meat:level,barracks:Math.max(catapult?10:1,level-2),tavern:Math.min(5,Math.floor(level/5)),wall},towers:wall>=15?[1,1,1,1]:[0,0,0,0]}));
 }
 function settlementKey(id){return 'v'+id;}
 function snapshotVillage(){let out={};for(const k of SETTLEMENT_FIELDS)out[k]=S[k];return out;}
@@ -464,7 +445,7 @@ function ensureKingdom(){
 }
 function inVillage(id,fn){ensureKingdom();storeActiveVillage();const selected=S.activeVillageId;if(!activateVillageFields(id))return;try{return fn();}finally{storeActiveVillage();activateVillageFields(selected);}}
 function activeVillageName(){return S.activeVillageId==='home'?'Aldeia Principal':S.villages.find(v=>settlementKey(v.id)===S.activeVillageId)?.name||'Aldeia';}
-function activeVillagePosition(){return S.activeVillageId==='home'?(S.homePos||HOME_POS):S.villages.find(v=>settlementKey(v.id)===S.activeVillageId)||HOME_POS;}
+function activeVillagePosition(){return S.activeVillageId==='home'?HOME_POS:S.villages.find(v=>settlementKey(v.id)===S.activeVillageId)||HOME_POS;}
 function travelSeconds(v){const src=activeVillagePosition();return Math.max(1,Math.round(Math.hypot(v.x-src.x,v.y-src.y)/300*CFG.attackSecPerDist));}
 function switchVillage(id){
  ensureKingdom();if(!S.ownedVillages[id])return;
@@ -472,7 +453,7 @@ function switchVillage(id){
  showToast('Você está controlando '+activeVillageName()+'.');
 }
 function createConqueredVillage(v,units,at){
- const d=defaultState();d.buildings={...v.buildings};d.rebuildDebt={...(v.rebuildDebt||{})};d.res={...v.res};d.towers=[...v.towers];d.troops={...d.troops,...units};d.lastTick=at;
+ const d=defaultState();d.buildings={...v.buildings};d.res={...v.res};d.towers=[...v.towers];d.troops={spear:0,sword:0,catapult:0,...units};d.lastTick=at;
  const cap=Math.round(CFG.storeBase*Math.pow(CFG.growth,d.buildings.main+d.buildings.store-2));
  d.food=Math.max(1000,Math.min(cap*2,Object.values(units).reduce((n,q)=>n+q,0)*CFG.foodPerTroop*8));
  let out={};for(const k of SETTLEMENT_FIELDS)out[k]=d[k];return out;
@@ -481,18 +462,12 @@ function load(name){
  let s=localStorage.getItem(profileKey(name));
  if(s){try{
   let parsed=JSON.parse(s);
-  parsed.buildings.stable ??= 0;parsed.buildings.workshop ??= 0;parsed.buildings.market ??= 0;
   parsed.buildings.meat ??= 1; parsed.buildings.tavern ??= 0;parsed.buildings.wall ??= 0;
   parsed.buildings.wood ??= 1;parsed.buildings.clay ??= 1;parsed.buildings.iron ??= 1;parsed.buildings.store ??= 1;parsed.buildings.farm ??= 1;
   parsed.towers=Array.isArray(parsed.towers)?Array.from({length:4},(_,i)=>Math.min(5,Math.max(0,Number(parsed.towers[i])||0))):[0,0,0,0];
-  parsed.food ??= 1000;
-  for(const u of Object.keys(CFG.units))parsed.troops[u] ??= 0;
-  parsed.research ||= {unlocked:{spear:true,sword:true},upgrades:{}};
-  parsed.research.unlocked ||= {spear:true,sword:true};if(parsed.buildings.barracks>=10&&parsed.troops.catapult)parsed.research.unlocked.catapult=true;parsed.research.upgrades ||= {};
-  parsed.researchQueue ||= [];parsed.rebuildDebt ||= {};parsed.shipments ||= [];parsed.joinedAt ||= parsed.lastTick||now();parsed.relocated ||= false;
-  parsed.homePos ||= {...HOME_POS};parsed.homeSector ||= 'center';
+  parsed.food ??= 1000;parsed.troops.catapult ??= 0;
   parsed.stats=Object.assign(defaultStats(),parsed.stats||{});
-  for(let key of ['troopsTrained','troopsLost']) parsed.stats[key]=Object.assign({},parsed.stats[key]||{});
+  for(let key of ['troopsTrained','troopsLost']) parsed.stats[key]=Object.assign({spear:0,sword:0,catapult:0},parsed.stats[key]||{});
   // Older saves used one entry for an entire group. Expand it into serial units.
   let cursor=0,queue=[];
   for(let q of parsed.trainQueue||[]){if(q.qty===undefined){queue.push(q);cursor=q.end;continue;}let qty=Math.max(1,Math.min(100000,Number(q.qty)||1));let ms=(CFG.units[q.unit]?.time||20)*1000;
@@ -501,11 +476,6 @@ function load(name){
   }
   parsed.trainQueue=queue;
   if(parsed.villages)parsed.villages.forEach(v=>{v.name=({1:'Vila do Norte',2:'Vila do Leste',3:'Vila do Sul'})[v.id]||v.name;});
-  if(parsed.ownedVillages)for(const v of Object.values(parsed.ownedVillages)){
-   for(const b of ['stable','workshop','market'])v.buildings[b] ??= 0;
-   for(const u of Object.keys(CFG.units))v.troops[u] ??= 0;
-   v.research ||= {unlocked:{spear:true,sword:true},upgrades:{}};v.researchQueue ||= [];v.rebuildDebt ||= {};if(v.buildings.barracks>=10&&v.troops.catapult)v.research.unlocked.catapult=true;
-  }
   return parsed;
  }catch(e){}}
  return defaultState();
@@ -517,27 +487,19 @@ function farmCap(){return Math.round(CFG.farmBase*Math.pow(CFG.farmGrowth,S.buil
 function foodCap(){return storeCap()*2;}
 function foodSupport(){return Math.floor(S.food/CFG.foodPerTroop);}
 function winRate(){let n=S.stats.attacksSentWon+S.stats.attacksSentLost;return n?S.stats.attacksSentWon/n:0;}
-function happiness(){let housing=Math.min(1,farmCap()/Math.max(1,popUsed()));let food=Math.min(1,foodSupport()/Math.max(1,popUsed()));let history=winRate()>=.75?25:Math.round(winRate()*20);return Math.min(100,Math.round(food*40+housing*35+history+Math.min(20,S.buildings.tavern)*2.5));}
+function happiness(){let housing=Math.min(1,farmCap()/Math.max(1,popUsed()));let food=Math.min(1,foodSupport()/Math.max(1,popUsed()));let history=winRate()>=.75?25:Math.round(winRate()*20);return Math.min(100,Math.round(food*40+housing*35+history+Math.min(5,S.buildings.tavern)*10));}
 function combatBonus(h=happiness()){return h>=60? +(h/100*.5).toFixed(3):0;}
-function combatPower(units,stat,bonus=0,upgrades=S?.research?.upgrades||{}){
- return Object.entries(units).reduce((sum,[u,n])=>{
-  let info=CFG.units[u];if(!info||!n)return sum;
-  let role=UNIT_ROLE[u],roleBuff=(role==='both'?1.15:stat==='atk'&&role==='atk'||stat==='def'&&role==='def'?1.25:1);
-  let tier=upgrades[u]||0,levelBuff=1+tier*.12,hp=stat==='def'?(info.hp||100)/100:1;
-  return sum+(info[stat]||0)*n*roleBuff*levelBuff*hp;
- },0)*(1+bonus)*(stat==='atk'?1+bonus:1);
-}
+function combatPower(units,stat,bonus){return Object.entries(units).reduce((sum,[u,n])=>sum+(CFG.units[u]?.[stat]||0)*n,0)*(1+bonus)*(stat==='atk'?1+bonus:1);}
 
 function popUsed(){return Object.entries(S.troops).reduce((n,[u,q])=>n+q*(CFG.units[u]?.pop||1),0)+S.trainQueue.reduce((n,q)=>n+(CFG.units[q.unit]?.pop||1),0)+(S.attacks||[]).reduce((sum,a)=>sum+Object.entries(a.units).reduce((n,[u,q])=>n+q*(CFG.units[u]?.pop||1),0),0);}
 function defenseMultiplier(buildings=S.buildings,towers=S.towers){return 1+(buildings.wall||0)*0.10+(Array.isArray(towers)?towers.reduce((a,n)=>a+n,0):0)*0.05;}
 function unitTrainSeconds(u){return Math.max(1,Math.round(CFG.units[u].time/(1+(S.buildings.main-1)*CFG.mainSpeedPerLevel)));}
 function towerCost(i,lvl){let factor=Math.pow(1.3,i)*Math.pow(1.4,lvl);return {wood:Math.round(500*factor),clay:Math.round(620*factor),iron:Math.round(430*factor)};}
 const RES_KEYS=['wood','clay','iron'];
-function productionAt(type,lvl){if(lvl<=0)return type==='wood'?CFG.resBase.wood*.12:type==='clay'?CFG.resBase.clay*.15:0;return CFG.resBase[type]*Math.pow(CFG.growth,lvl-1);}
-function prodPerSec(type){return productionAt(type,S.buildings[type]);}
+function prodPerSec(type){let lvl=S.buildings[type];if(!lvl)return type==='wood'?CFG.resBase.wood*.12:type==='clay'?CFG.resBase.clay*.15:0;return CFG.resBase[type]*Math.pow(CFG.growth,lvl-1);}
 function prodPerHour(type){return prodPerSec(type)*3600;}
 // The playable settlement occupies flat ground; the fjord and cliffs are outside its palisade.
-const B_POS={wood:{x:235,y:349},main:{x:480,y:335},clay:{x:697,y:350},farm:{x:205,y:480},store:{x:348,y:467},iron:{x:750,y:450},meat:{x:448,y:515},tavern:{x:568,y:451},barracks:{x:650,y:548},stable:{x:550,y:540},workshop:{x:760,y:545},market:{x:350,y:365}};
+const B_POS={wood:{x:235,y:349},main:{x:480,y:335},clay:{x:697,y:350},farm:{x:205,y:480},store:{x:348,y:467},iron:{x:750,y:450},meat:{x:448,y:515},tavern:{x:568,y:451},barracks:{x:650,y:548}};
 const VILLAGE_TREES=[[60,280],[93,347],[48,431],[99,521],[126,254],[811,304],[813,389],[795,504],[60,570],[811,567],[119,601],[830,601],[808,263]];
 function pineSVG(x,y,scale=1){return `<g transform="translate(${x},${y}) scale(${scale})"><ellipse cy="4" rx="8" ry="2" fill="#203c38" opacity=".4"/><path d="M-1 2V-18" stroke="#543f30" stroke-width="3"/><path d="M0 -31L-11 -10H11Z M0 -23L-12 -2H12Z" fill="#244a44" stroke="#142e2c" stroke-width="1"/><path d="M0 -30L-6 -15M0 -23L-7 -5" stroke="#49806b" stroke-width="1.5"/></g>`;}
 function longhouseSVG(roof='#8b4d38',wall='#8d816b'){return `<ellipse cy="18" rx="31" ry="5" fill="#243a36" opacity=".35"/><path d="M-28 -4L-19 -22 0 -30 19 -22 28 -4Z" fill="${roof}" stroke="#392a28" stroke-width="2"/><rect x="-24" y="-4" width="48" height="22" fill="${wall}" stroke="#3d3c35" stroke-width="2"/><path d="M-30 -4H30M-19 -22L0 -30 19 -22" fill="none" stroke="#d8b483" stroke-width="2"/><path d="M-5 18V3a5 5 0 0 1 10 0v15" fill="#293335"/><path d="M-18 2h8m20 0h8" stroke="#e5bd72" stroke-width="3"/>` ;}
@@ -551,9 +513,6 @@ function buildingArt(type){
  if(type==='farm')return `<g transform="translate(-15,2) scale(.65)">${longhouseSVG('#866749','#a08c6d')}</g><g transform="translate(16,5) scale(.6)">${longhouseSVG('#85523e','#a79879')}</g><path d="M-30 19H30" stroke="#a58e64" stroke-width="2"/>`;
  if(type==='meat')return `${longhouseSVG('#6d493b','#a08b70')}<path d="M-18 12h35v6h-35Z" fill="#71513a"/><path d="M-8 3q9 -8 13 2l-1 8q-7 5 -11 -2Z" fill="#b76952" stroke="#ecb58e" stroke-width="2"/><path d="M-1 3v-9" stroke="#e4ddc8" stroke-width="2"/>`;
  if(type==='barracks')return `${longhouseSVG('#654546','#7f7870')}<path d="M-34 14V-18m68 32v-32" stroke="#c7c6b1" stroke-width="2"/><path d="M-34 -18l10 4-10 5m68 -9l-10 4 10 5" fill="#ae4e43"/><circle cx="-20" cy="5" r="6" fill="#768590" stroke="#d2b77e" stroke-width="2"/><circle cx="20" cy="5" r="6" fill="#768590" stroke="#d2b77e" stroke-width="2"/>`;
- if(type==='stable')return `${rusticHallSVG('#724636','#94826a')}<path d="M-30 20h62m-55 5h50" stroke="#d5bb88" stroke-width="2"/>`;
- if(type==='workshop')return `${rusticHallSVG('#6d5750','#8e8980')}<circle cx="28" cy="20" r="6" fill="#564439"/><path d="M26 18l-20 -13" stroke="#d6bc88" stroke-width="3"/>`;
- if(type==='market')return `${rusticHallSVG('#91734c','#a19374')}<path d="M-40 20h80m-30 -8h28" stroke="#d4b483" stroke-width="3"/>`;
  if(type==='tavern')return `${longhouseSVG('#a76a46','#91826a')}<path d="M25 -17h9v16h-9" fill="#9b7542" stroke="#dfc386" stroke-width="2"/><path d="M28 -12q4 -4 4 1v4q-4 5 -4 0" fill="#ebc66e"/><path d="M-12 8h7v9h-7m7 -7h4v4h-4" fill="none" stroke="#e8bd69" stroke-width="2"/>`;
  return base;
 }
@@ -567,7 +526,7 @@ function buildingArtAt(type,lvl){
  if(type==='wood'&&lvl===0)return `${pineSVG(-26,9,.76)}${pineSVG(2,1,1.04)}${pineSVG(29,11,.68)}${pineSVG(15,17,.53)}`;
  if(type==='clay'&&lvl===0)return `<ellipse cy="16" rx="33" ry="8" fill="#41554e" opacity=".55"/><path d="M-30 13L-23 0 -12 4 -5 -16 8 -11 16 -4 24 0 31 14Z" fill="#788686" stroke="#aeb6ab" stroke-width="2"/><path d="M-25 10l9 -5 8 6m10 -15 7 7 11 -1" fill="none" stroke="#b6bdb4" stroke-width="2"/><path d="M31 12L17 -18m-7 0 18 -6" stroke="#a77a52" stroke-width="3"/><path d="M9 -19q7 -9 20 -6" fill="none" stroke="#c5ccca" stroke-width="4"/>`;
  if(type==='store'&&lvl===0)return `<ellipse cy="20" rx="31" ry="5" fill="#334c45"/><path d="M-25 -2h48v18h-48Z" fill="#8c6a46" stroke="#d5ad74" stroke-width="2"/><path d="M-28 -12L0 -23 27 -12V1H-28Z" fill="#736247" stroke="#d1b189" stroke-width="2"/><path d="M-24 4h45m-45 7h45" stroke="#c09363" stroke-width="2"/><circle cx="-16" cy="20" r="7" fill="#513f35" stroke="#c9a57b" stroke-width="2"/><circle cx="17" cy="20" r="7" fill="#513f35" stroke="#c9a57b" stroke-width="2"/><path d="M26 10l14 4" stroke="#c1a374" stroke-width="3"/>`;
- if(type==='tavern'&&lvl>=20)return `<g transform="scale(1.16)">${rusticHallSVG('#91473d','#92968c')}<path d="M-31 3h20m20 0h14m-54 8h7m32 0h11m-51 7h21m19 0h11M-23 0v6m8 0v5m32 -11v6" stroke="#616e6b" stroke-width="1"/><path d="M34 -18h12v15H34Z" fill="#745438" stroke="#ddbd83" stroke-width="1.5"/><path d="M37 -14h5v7h-5Zm5 1h3v4h-3" fill="none" stroke="#ebc575" stroke-width="1.4"/><path d="M-42 22h12m-10 0v5m8 -5v5" stroke="#ae8458" stroke-width="2"/></g>`;
+ if(type==='tavern'&&lvl>=5)return `<g transform="scale(1.16)">${rusticHallSVG('#91473d','#92968c')}<path d="M-31 3h20m20 0h14m-54 8h7m32 0h11m-51 7h21m19 0h11M-23 0v6m8 0v5m32 -11v6" stroke="#616e6b" stroke-width="1"/><path d="M34 -18h12v15H34Z" fill="#745438" stroke="#ddbd83" stroke-width="1.5"/><path d="M37 -14h5v7h-5Zm5 1h3v4h-3" fill="none" stroke="#ebc575" stroke-width="1.4"/><path d="M-42 22h12m-10 0v5m8 -5v5" stroke="#ae8458" stroke-width="2"/></g>`;
  if(lvl<15)return buildingArt(type);
  let art='';
  if(type==='wood')art=`${pineSVG(-40,4,.94)}${pineSVG(39,0,1.08)}<g transform="scale(.82)">${rusticHallSVG('#77664e','#8a7455')}</g><path d="M-39 21l22 -2m-19 8 23 -2m30 -2 22 -2" stroke="#98683e" stroke-width="5"/><circle cx="-39" cy="21" r="2.5" fill="#d7b783"/><circle cx="-36" cy="27" r="2.5" fill="#d7b783"/><circle cx="17" cy="23" r="2.5" fill="#d7b783"/>`;
@@ -613,11 +572,10 @@ function accrueVillage(to){
 }
 function tickVillage(t){
  S.lastTick=Math.max(S.lastTick,t-24*3600000);
- const events=[...S.buildQueue.map(q=>({q,kind:'build'})),...S.trainQueue.map(q=>({q,kind:'train'})),...S.researchQueue.map(q=>({q,kind:'research'}))].filter(e=>e.q.end<=t).sort((a,b)=>a.q.end-b.q.end);
+ const events=[...S.buildQueue.map(q=>({q,kind:'build'})),...S.trainQueue.map(q=>({q,kind:'train'}))].filter(e=>e.q.end<=t).sort((a,b)=>a.q.end-b.q.end);
  for(const e of events){
   accrueVillage(Math.max(S.lastTick,e.q.end));const q=e.q;
-  if(e.kind==='research'){if(q.kind==='unlock')S.research.unlocked[q.unit]=true;else S.research.upgrades[q.unit]=(S.research.upgrades[q.unit]||0)+1;S.researchQueue=S.researchQueue.filter(x=>x!==q);}
-  else if(e.kind==='build'){if(q.b==='tower')S.towers[q.tower]=q.level;else S.buildings[q.b]=q.level;S.buildQueue=S.buildQueue.filter(x=>x!==q);}
+  if(e.kind==='build'){if(q.b==='tower')S.towers[q.tower]=q.level;else S.buildings[q.b]=q.level;S.buildQueue=S.buildQueue.filter(x=>x!==q);}
   else{S.troops[q.unit]=(S.troops[q.unit]||0)+1;S.stats.troopsTrained[q.unit]=(S.stats.troopsTrained[q.unit]||0)+1;S.trainQueue=S.trainQueue.filter(x=>x!==q);}
  }
  accrueVillage(t);S.lastTick=t;
@@ -630,36 +588,23 @@ function tick(){
   for(const {id,a} of arrivals){activateVillageFields(id);S.attacks=S.attacks.filter(x=>x!==a);resolveAttack(a);storeActiveVillage();}
   for(const [id,v] of Object.entries(S.ownedVillages)){if(v.lastTick<t){activateVillageFields(id);tickVillage(t);storeActiveVillage();}}
  }finally{activateVillageFields(selected);}
- processShipments(t);save();
+ save();
 }
 function addLog(){}
-function siegeDamage(v,units,won){
- let count=(units.catapult||0),rams=(units.ram||0),wall=v.buildings.wall||0;
- let siege=Math.max(0,Math.floor(rams/12+count/25));let wallDamage=Math.min(wall,Math.max(wall&&won?1:0,siege));v.buildings.wall=Math.max(0,wall-wallDamage);
- if(wallDamage){v.rebuildDebt ||= {};v.rebuildDebt.wall=(v.rebuildDebt.wall||0)+wallDamage;}
- let damage={wall:wallDamage};
- if(v.buildings.wall>0||!won||!count)return damage;
- v.rebuildDebt ||= {};let target=Object.hasOwn(v.buildings,aTarget(units))?aTarget(units):'main';
- let extra=Math.max(1,Math.floor(count/10));let mild=Math.floor(count/70);
- for(const b of Object.keys(v.buildings)){if(b==='wall')continue;let d=Math.min(v.buildings[b],(b===target?extra:0)+mild);if(d){v.buildings[b]-=d;v.rebuildDebt[b]=(v.rebuildDebt[b]||0)+d;damage[b]=d;}}
- return damage;
-}
-function aTarget(units){return units.target||'main';}
 function resolveAttack(a){
  const v=S.villages.find(x=>x.id===a.target);
  if(!v||S.ownedVillages[settlementKey(a.target)]){
   for(const [u,n] of Object.entries(a.units))S.troops[u]=(S.troops[u]||0)+n;
   S.reports.unshift({time:now(),target:v?.name||'Aldeia',cancelled:true,source:activeVillageName(),sent:a.units,lost:{},loot:{wood:0,clay:0,iron:0},atk:0,enemyDef:0});return;
  }
- const atk=combatPower(a.units,'atk',a.bonus||0,a.upgrades||{}),def=combatPower(v.troops,'def',0,{})*defenseMultiplier(v.buildings,v.towers),won=atk>def;
- let wallBefore=v.buildings.wall||0,damage=siegeDamage(v,{...a.units,target:a.targetBuilding},won),breached=wallBefore===0||v.buildings.wall===0;
- let lost={},survivors={};for(const [u,n] of Object.entries(a.units)){let ratio=won?Math.min(.35,def/(atk+1)):.75;lost[u]=Math.min(n,Math.floor(n*ratio));survivors[u]=n-lost[u];S.stats.troopsLost[u]=(S.stats.troopsLost[u]||0)+lost[u];}
- if(won){for(const [u,n] of Object.entries(v.troops)){v.troops[u]=Math.max(0,n-Math.ceil(n*Math.min(1,atk/(def+1))));}}
- let conquered=won&&breached&&combatPower(v.troops,'def',0,{})<1;
- if(conquered){S.ownedVillages[settlementKey(v.id)]=createConqueredVillage(v,survivors,a.arriveEnd);v.conqueredAt=a.arriveEnd;showToast(v.name+' conquistada! Seus sobreviventes ficaram na nova aldeia.');}
- else{for(const [u,n] of Object.entries(survivors))S.troops[u]=(S.troops[u]||0)+n;}
- S.stats.attacksSentWon+=won?1:0;S.stats.attacksSentLost+=won?0:1;
- S.reports.unshift({time:a.arriveEnd,target:v.name,targetId:v.id,source:activeVillageName(),win:won,conquered,wallRemaining:v.buildings.wall,damage,sent:a.units,lost,loot:{wood:0,clay:0,iron:0},retained:conquered?{...v.res}:null,enemyDef:def,atk});
+ const atk=combatPower(a.units,'atk',a.bonus||0),def=combatPower(v.troops,'def',0)*defenseMultiplier(v.buildings,v.towers),win=atk>def;
+ const lost={},survivors={};for(const [u,n] of Object.entries(a.units)){lost[u]=win?Math.floor(n*Math.min(.3,def/(atk+1))):n;survivors[u]=n-lost[u];S.stats.troopsLost[u]=(S.stats.troopsLost[u]||0)+lost[u];}
+ if(win){
+  S.ownedVillages[settlementKey(v.id)]=createConqueredVillage(v,survivors,a.arriveEnd);v.conqueredAt=a.arriveEnd;v.troops={spear:0,sword:0,catapult:0};
+  showToast(v.name+' conquistada! Seus sobreviventes ficaram na nova aldeia. Clique nela no mapa para governar.');
+ }
+ S.stats.attacksSentWon+=win?1:0;S.stats.attacksSentLost+=win?0:1;
+ S.reports.unshift({time:a.arriveEnd,target:v.name,targetId:v.id,source:activeVillageName(),win,conquered:win,sent:a.units,lost,loot:{wood:0,clay:0,iron:0},retained:win?{...v.res}:null,enemyDef:def,atk});
 }
 
 function safeRender(){
@@ -697,8 +642,8 @@ function renderHeader(){
    <span>🍻 <b>${happiness()}%</b> (+${Math.round(combatBonus()*100)}%)</span>
    <span class="profile-tag">👤 ${escapeHTML(myId)} · 🏘️ ${escapeHTML(activeVillageName())}</span>
    <button class="exit-btn" onclick="doLogout()">🚪 ${t('logout_btn')}</button>`;
- document.getElementById('nav').innerHTML=['village','barracks','market','logistics','map','multiplayer','reports'].map(x=>
-  `<button class="${tab===x?'active':''}" onclick="setTab('${x}')">${{village:t('nav_village'),barracks:t('nav_barracks'),market:'⚖️ Mercado',logistics:'🚚 Transporte',map:t('nav_map'),multiplayer:t('nav_multiplayer'),reports:t('nav_reports')}[x]}</button>`).join('');
+ document.getElementById('nav').innerHTML=['village','barracks','map','multiplayer','reports'].map(x=>
+  `<button class="${tab===x?'active':''}" onclick="setTab('${x}')">${{village:t('nav_village'),barracks:t('nav_barracks'),map:t('nav_map'),multiplayer:t('nav_multiplayer'),reports:t('nav_reports')}[x]}</button>`).join('');
  document.querySelector('header h1').textContent=t('header_title');
  document.title=t('header_title');
  let gl=document.getElementById('gearLabel'); if(gl) gl.textContent=t('settings_title');
@@ -707,8 +652,6 @@ function renderMain(){
  let m=document.getElementById('main');
  if(tab==='village') m.innerHTML=renderVillage();
  if(tab==='barracks') m.innerHTML=renderBarracks();
- if(tab==='market')m.innerHTML=renderMarket();
- if(tab==='logistics')m.innerHTML=renderLogistics();
  if(tab==='map'){m.innerHTML=renderMap();bindWorldMap();}
  if(tab==='multiplayer') m.innerHTML=renderMultiplayer();
  if(tab==='reports') m.innerHTML=renderReports();
@@ -724,17 +667,17 @@ function renderVillage(){
  for(let b of BUILD_KEYS){
   let lvl=S.buildings[b];
   let q=S.buildQueue.find(x=>x.b===b);
-  let c=cost(BASE_COST[b],lvl);if(S.rebuildDebt?.[b])for(const r of RES_KEYS)c[r]=Math.ceil(c[r]*1.6);
-  let maxed=b==='tavern'&&lvl>=20;
+  let c=cost(BASE_COST[b],lvl);
+  let maxed=b==='tavern'&&lvl>=5;
   let afford=S.res.wood>=c.wood&&S.res.clay>=c.clay&&S.res.iron>=c.iron;
-  html+=`<div class="card"><b>${buildName(b)}</b> <span class="tag">${t('building_level')} ${lvl}</span><br><small>${buildDesc(b)}</small>${buildingPreview(b)}${!hasBuildingRequirements(b)&&!lvl?`<div class="tag">🔒 Exige ${requirementText(b)}</div>`:''}`;
+  html+=`<div class="card"><b>${buildName(b)}</b> <span class="tag">${t('building_level')} ${lvl}</span><br><small>${buildDesc(b)}</small>${buildingPreview(b)}`;
   if(q){
    html+=`<div class="bar"><div style="width:${100-100*(q.end-now())/(q.end-q.start)}%"></div></div>
    <div class="row"><small>${t('building_building')} ${q.level} (${countdown(q.end)})</small>
    <button class="act skip" onclick="skipBuild('${b}')">${t('skip_btn')}</button></div>`;
   } else if(maxed){ html+=`<div class="row"><b>${t('tavern_max')}</b></div>`; } else {
    html+=`<div class="row"><small>${t('building_cost')} 🪵${c.wood} 🧱${c.clay} ⛏️${c.iron} (${buildTime(BASE_TIME[b],lvl,S.buildings.main)}s)</small>
-   <button class="act" ${afford&&S.buildQueue.length<1&&hasBuildingRequirements(b)?'':'disabled'} onclick="upgrade('${b}')">${lvl===0&&b!=='wood'&&b!=='clay'&&b!=='store'?t('build_first_btn'):t('building_upgrade_btn')}</button></div>`;
+   <button class="act" ${afford&&S.buildQueue.length<1?'':'disabled'} onclick="upgrade('${b}')">${lvl===0&&b!=='wood'&&b!=='clay'&&b!=='store'?t('build_first_btn'):t('building_upgrade_btn')}</button></div>`;
   }
   html+=`</div>`;
  }
@@ -755,7 +698,7 @@ function renderVillage(){
 function buildingPreview(b){
  let lvl=S.buildings[b];
  if(CFG.resBase[b]!==undefined){
-  let cur=prodPerSec(b), nxt=productionAt(b,lvl+1);
+  let cur=prodPerSec(b), nxt=CFG.resBase[b]*Math.pow(CFG.growth,lvl);
   return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${cur.toFixed(1)} ${t('res_'+b).toLowerCase()}/s</b> → ${t('building_level')} ${lvl+1}: <b>${nxt.toFixed(1)} ${t('res_'+b).toLowerCase()}/s</b></div>`;
  }
  if(b==='store'){
@@ -768,7 +711,7 @@ function buildingPreview(b){
   return `<div style="color:var(--good);font-size:12px;margin:4px 0">${t('building_level')} ${lvl}: <b>${curSpeed}%, ${curCap}</b> → ${t('building_level')} ${lvl+1}: <b>${nxtSpeed}%, ${nxtCap}</b></div>`;
  }
  if(b==='meat'){let cur=lvl?CFG.foodBase*Math.pow(CFG.growth,lvl-1):0;let next=CFG.foodBase*Math.pow(CFG.growth,lvl);return `<div style="color:var(--good);font-size:12px">${cur.toFixed(2)} → ${next.toFixed(2)} ${t('food_label')}/s</div>`;}
- if(b==='tavern') return `<div style="color:var(--good);font-size:12px">+${(lvl*2.5).toFixed(1)}% → +${(Math.min(20,lvl+1)*2.5).toFixed(1)}% ${t('happiness_label')}</div>`;
+ if(b==='tavern') return `<div style="color:var(--good);font-size:12px">+${lvl*10}% → +${Math.min(5,lvl+1)*10}% ${t('happiness_label')}</div>`;
  if(b==='wall') return `<div style="color:var(--good);font-size:12px">🛡️ +${lvl*10}% → +${(lvl+1)*10}%</div>`;
  if(b==='farm'){
   let cur=farmCap(); let nxt=Math.round(CFG.farmBase*Math.pow(CFG.farmGrowth,lvl+1) + 45*(S.buildings.main-1));
@@ -778,13 +721,13 @@ function buildingPreview(b){
 }
 function upgrade(b){
  if(S.buildQueue.length>=1) return;
- if(!BUILD_KEYS.includes(b) || !hasBuildingRequirements(b) || (b==='tavern'&&S.buildings.tavern>=20)) return;
- let lvl=S.buildings[b], c=cost(BASE_COST[b],lvl);if(S.rebuildDebt?.[b])for(const r of RES_KEYS)c[r]=Math.ceil(c[r]*1.6);
+ if(!BUILD_KEYS.includes(b) || (b==='tavern'&&S.buildings.tavern>=5)) return;
+ let lvl=S.buildings[b], c=cost(BASE_COST[b],lvl);
  if(S.res.wood<c.wood||S.res.clay<c.clay||S.res.iron<c.iron) return;
  S.res.wood-=c.wood;S.res.clay-=c.clay;S.res.iron-=c.iron;
  S.stats.resSpent.wood+=c.wood; S.stats.resSpent.clay+=c.clay; S.stats.resSpent.iron+=c.iron;
  let dur=buildTime(BASE_TIME[b],lvl,S.buildings.main)*1000;
- S.buildQueue.push({b,level:lvl+1,start:now(),end:now()+dur});if(S.rebuildDebt?.[b])S.rebuildDebt[b]--;
+ S.buildQueue.push({b,level:lvl+1,start:now(),end:now()+dur});
  save();render();
 }
 function skipBuild(b,tower){let q=S.buildQueue.find(x=>x.b===b&&(b!=='tower'||x.tower===tower));if(q)q.end=now();tick();render();}
@@ -797,72 +740,17 @@ function upgradeTower(i){
  S.buildQueue.push({b:'tower',tower:i,level:lvl+1,start,end:start+dur});save();render();
 }
 
-const ALL_UNITS=Object.keys(defaultCFG().units);
-function unlockHint(u){let b=requiredBuilding(u),extra=b==='barracks'?1:b==='stable'?2:2;return `${buildName(b)} ${extra} · Taberna 1 · pesquisa de desbloqueio`;}
-function canTrain(u){return !!CFG.units[u]&&S.buildings[requiredBuilding(u)]>=1&&!!S.research.unlocked[u];}
-function researchRequirement(u,tier){let b=requiredBuilding(u);let req=RESEARCH_LEVELS[tier-1];return req&&S.buildings.tavern>=req.tavern&&S.buildings.barracks>=req.barracks&&S.buildings[b]>=(b==='barracks'?req.barracks:req.special);}
-function researchCost(u,tier=0){let special=['ram','catapult','heavyCavalry'].includes(u)?1.6:1,scale=tier?Math.pow(4,tier)*special:1;return Object.fromEntries(RES_KEYS.map(r=>[r,Math.ceil((tier?420:160)*scale*(r==='iron'?1.4:1))]));}
-function startResearch(u,kind){if(!CFG.units[u]||S.researchQueue.length||S.buildings.tavern<1)return;
- let b=requiredBuilding(u),tier=S.research.upgrades[u]||0;
- if(kind==='unlock'){if(S.research.unlocked[u]||S.buildings[b]<(b==='barracks'?1:2))return;}
- else if(kind==='upgrade'){if(!S.research.unlocked[u]||tier>=3||!researchRequirement(u,tier+1))return;}else return;
- let c=researchCost(u,kind==='upgrade'?tier+1:0);if(RES_KEYS.some(r=>S.res[r]<c[r])){showToast(feedback('resources'));return;}
- for(const r of RES_KEYS){S.res[r]-=c[r];S.stats.resSpent[r]+=c[r];}
- let start=now(),duration=kind==='unlock'?Math.round(CFG.units[u].time*1000*1.3):Math.round((180+CFG.units[u].time)*1000*Math.pow(5,tier+1));
- S.researchQueue.push({kind,unit:u,start,end:start+duration});save();render();
-}
-function renderResearch(){if(!S.buildings.tavern)return '<div class="card">🍻 Construa a Taberna para pesquisar tropas.</div>';
- let q=S.researchQueue[0],out=`<h2>🍻 Pesquisas da Taberna</h2><div class="card"><small>Desbloqueios rápidos e baratos; três melhorias cada vez mais lentas e caras, +12% por nível em combate.</small>${q?`<div class="row">${q.kind==='unlock'?'Desbloquear':'Melhorar'} ${unitName(q.unit)} · ${countdown(q.end)}</div>`:''}</div><div class="grid">`;
- for(const u of ALL_UNITS){let unlocked=!!S.research.unlocked[u],tier=S.research.upgrades[u]||0,kind=unlocked?'upgrade':'unlock',ready=kind==='unlock'?S.buildings[requiredBuilding(u)]>=(requiredBuilding(u)==='barracks'?1:2):researchRequirement(u,tier+1),c=researchCost(u,kind==='unlock'?0:tier+1);
- out+=`<div class="card"><b>${unitName(u)}</b> · ${unlocked?'Melhoria '+tier+'/3':'Bloqueada'}<br><small>${kind==='unlock'?'Requer '+buildName(requiredBuilding(u))+' '+(requiredBuilding(u)==='barracks'?1:2):tier<3?'Requer Taberna '+(RESEARCH_LEVELS[tier]?.tavern||0)+', Salão dos Guerreiros '+(RESEARCH_LEVELS[tier]?.barracks||0):'Nível máximo'}</small><div class="row"><small>🪵${c.wood} 🧱${c.clay} ⛏️${c.iron}</small><button class="act" ${ready&&tier<3&&!q?'':'disabled'} onclick="startResearch('${u}','${kind}')">${kind==='unlock'?'Pesquisar':'Melhorar'}</button></div></div>`;}
- return out+'</div>';
-}
-function readAmounts(prefix){let out={};for(const r of RES_KEYS)out[r]=Number(document.getElementById(prefix+'_'+r)?.value||0);return out;}
-function validAmounts(a){return RES_KEYS.every(r=>Number.isSafeInteger(a[r])&&a[r]>=0);}
-function resourceInputs(prefix){return RES_KEYS.map((r,i)=>`<label>${['🪵','🧱','⛏️'][i]} ${t('res_'+r)} <input id="${prefix}_${r}" type="number" min="0" step="1" value="0"></label>`).join(' ');}
-function marketKey(){return `nordic_market_${WORLD?.code||'legacy'}`;}
-function getOffers(){try{return JSON.parse(localStorage.getItem(marketKey())||'[]');}catch{return [];}}
-function setOffers(offers){localStorage.setItem(marketKey(),JSON.stringify(offers));}
-function createOffer(){if(S.buildings.market<1)return;let offered=readAmounts('offer'),requested=readAmounts('want');if(!validAmounts(offered)||!validAmounts(requested)||!RES_KEYS.some(r=>offered[r])||!RES_KEYS.some(r=>requested[r])){showToast('Informe recursos e quantidades válidas dos dois lados.');return;}
- if(RES_KEYS.some(r=>offered[r]>S.res[r])){showToast(feedback('resources'));return;}
- let offers=getOffers();for(const r of RES_KEYS)S.res[r]-=offered[r];offers.push({id:crypto.randomUUID?.()||String(now()+Math.random()),owner:ACTIVE_PROFILE,world:WORLD.code,village:S.activeVillageId,offered,requested,created:now()});setOffers(offers);save();render();}
-function cancelOffer(id){let offers=getOffers(),o=offers.find(x=>x.id===id);if(!o||o.owner!==ACTIVE_PROFILE)return;
- if(inVillage(o.village,()=>RES_KEYS.some(r=>S.res[r]+o.offered[r]>storeCap()))){showToast('Libere espaço no Armazém antes de cancelar a oferta.');return;}
- inVillage(o.village,()=>{for(const r of RES_KEYS)S.res[r]=Math.min(storeCap(),S.res[r]+o.offered[r]);});setOffers(offers.filter(x=>x.id!==id));save();render();}
-function acceptOffer(id){let offers=getOffers(),o=offers.find(x=>x.id===id);if(!o||o.owner===ACTIVE_PROFILE)return;
- if(RES_KEYS.some(r=>S.res[r]<o.requested[r]||S.res[r]+o.offered[r]-o.requested[r]>storeCap())){showToast('Recursos ou espaço insuficiente no Armazém.');return;}
- let ownerRaw=localStorage.getItem(profileKey(o.owner));if(!ownerRaw){showToast('O perfil vendedor não está disponível neste navegador.');return;}
- let owner=JSON.parse(ownerRaw),v=owner.ownedVillages?.[o.village];if(!v){showToast('A aldeia vendedora não existe.');return;}
- let cap=Math.round(CFG.storeBase*Math.pow(CFG.growth,(v.buildings.main-1)+(v.buildings.store-1)));if(RES_KEYS.some(r=>v.res[r]+o.requested[r]>cap)){showToast('O Armazém da aldeia vendedora está cheio.');return;}
- for(const r of RES_KEYS){S.res[r]+=o.offered[r]-o.requested[r];v.res[r]+=o.requested[r];}if(owner.activeVillageId===o.village)owner.res=v.res;
- localStorage.setItem(profileKey(o.owner),JSON.stringify(owner));setOffers(offers.filter(x=>x.id!==id));save();render();}
-function renderMarket(){if(!S.buildings.market)return `<div class="card">⚖️ Mercado: requer ${requirementText('market')} para construir.</div>`;
- let offers=getOffers();return `<h2>⚖️ Mercado</h2><div class="card"><b>Criar oferta</b><p>Ofereço: ${resourceInputs('offer')}</p><p>Peço em troca: ${resourceInputs('want')}</p><button class="act" onclick="createOffer()">Publicar oferta</button></div><h2>Ofertas do mundo</h2>${offers.length?offers.map(o=>`<div class="card row"><span><b>${escapeHTML(o.owner)}</b> · oferece ${RES_KEYS.filter(r=>o.offered[r]).map(r=>`${o.offered[r]} ${t('res_'+r)}`).join(', ')} · pede ${RES_KEYS.filter(r=>o.requested[r]).map(r=>`${o.requested[r]} ${t('res_'+r)}`).join(', ')}</span><button class="act" onclick="${o.owner===ACTIVE_PROFILE?'cancelOffer':'acceptOffer'}('${escapeHTML(o.id)}')">${o.owner===ACTIVE_PROFILE?'Cancelar':'Aceitar'}</button></div>`).join(''):'<div class="card">Nenhuma oferta aberta.</div>'}<small>As ofertas deste modo local são compartilhadas entre perfis do mesmo navegador.</small>`;}
-function reservedIncoming(id){let reservations={wood:0,clay:0,iron:0,pop:0};for(const q of S.shipments||[])if(q.to===id){for(const r of RES_KEYS)reservations[r]+=q.res[r]||0;reservations.pop+=Object.entries(q.troops).reduce((n,[u,c])=>n+c*(CFG.units[u]?.pop||1),0);}return reservations;}
-function launchShipment(){let to=document.getElementById('shipTo')?.value,src=S.activeVillageId;if(!to||to===src||!S.ownedVillages[to])return;
- let res=readAmounts('ship'),troops={};for(const u of ALL_UNITS)troops[u]=Number(document.getElementById('ship_'+u)?.value||0);
- if(!validAmounts(res)||Object.values(troops).some(x=>!Number.isSafeInteger(x)||x<0)||(!Object.values(res).some(Boolean)&&!Object.values(troops).some(Boolean))){showToast('Informe uma quantidade válida.');return;}
- if(RES_KEYS.some(r=>res[r]>S.res[r])||ALL_UNITS.some(u=>troops[u]>S.troops[u])){showToast('Recursos ou tropas insuficientes.');return;}
- let fit=inVillage(to,()=>{let pending=reservedIncoming(to),pop=Object.entries(troops).reduce((n,[u,c])=>n+c*CFG.units[u].pop,0);return RES_KEYS.every(r=>S.res[r]+pending[r]+res[r]<=storeCap())&&popUsed()+pending.pop+pop<=Math.min(farmCap(),foodSupport());});
- if(!fit){showToast('O destino não tem capacidade de Armazém, moradia ou comida.');return;}
- for(const r of RES_KEYS)S.res[r]-=res[r];for(const u of ALL_UNITS)S.troops[u]-=troops[u];let a=activeVillagePosition(),b=to==='home'?S.homePos:S.villages.find(v=>settlementKey(v.id)===to);let seconds=Math.max(30,Math.round(Math.hypot(b.x-a.x,b.y-a.y)/10*8));
- S.shipments.push({id:crypto.randomUUID?.()||String(now()),from:src,to,res,troops,arriveEnd:now()+seconds*1000});save();render();}
-function processShipments(t){for(const q of [...(S.shipments||[])]){if(q.arriveEnd>t)continue;let dest=S.ownedVillages[q.to];if(!dest){S.shipments=S.shipments.filter(x=>x!==q);continue;}
- let fits=inVillage(q.to,()=>RES_KEYS.every(r=>S.res[r]+q.res[r]<=storeCap())&&popUsed()+Object.entries(q.troops).reduce((n,[u,c])=>n+c*(CFG.units[u]?.pop||1),0)<=Math.min(farmCap(),foodSupport()));if(!fits)continue;
- inVillage(q.to,()=>{for(const r of RES_KEYS)S.res[r]+=q.res[r];for(const u of ALL_UNITS)S.troops[u]=(S.troops[u]||0)+(q.troops[u]||0);});S.shipments=S.shipments.filter(x=>x!==q);}}
-function renderLogistics(){let ids=Object.keys(S.ownedVillages);return `<h2>🚚 Transporte entre aldeias</h2><div class="card">Origem: ${escapeHTML(activeVillageName())}<p><label>Destino <select id="shipTo">${ids.filter(id=>id!==S.activeVillageId).map(id=>`<option value="${id}">${escapeHTML(id==='home'?'Aldeia Principal':S.villages.find(v=>settlementKey(v.id)===id)?.name||id)}</option>`).join('')}</select></label></p><p>Recursos: ${resourceInputs('ship')}</p><div class="grid">${ALL_UNITS.map(u=>`<label>${unitName(u)} (${S.troops[u]||0}) <input id="ship_${u}" type="number" min="0" step="1" value="0"></label>`).join('')}</div><p><button class="act" ${ids.length<2?'disabled':''} onclick="launchShipment()">Enviar caravana</button></p></div><h2>Caravanas a caminho</h2>${(S.shipments||[]).map(q=>`<div class="card">${escapeHTML(q.from)} → ${escapeHTML(q.to)} · ${countdown(q.arriveEnd)}</div>`).join('')||'<div class="card">Nenhuma caravana.</div>'}`;}
-
 function renderBarracks(){
  if(S.buildings.barracks<1) return `<div class="card">${t('barracks_need_building')} <b>${buildName('barracks')}</b> ${t('barracks_need_building2')}</div>`;
  let html=`<h2>${t('barracks_train_title')}</h2><div class="grid">`;
  for(let u in CFG.units){
-  let info=CFG.units[u],locked=!canTrain(u);
+  let info=CFG.units[u],locked=u==='catapult'&&S.buildings.barracks<10;
   html+=`<div class="card"><b>${unitName(u)}</b> <span class="tag">⚔️${info.atk} 🛡️${info.def} 👥${info.pop}</span>
   <div class="row"><small>${t('barracks_cost_unit')} 🪵${info.cost.wood} 🧱${info.cost.clay} ⛏️${info.cost.iron}, ${unitTrainSeconds(u)}s/${t('building_level')} 1</small></div>
-  ${locked?`<small>🔒 ${unlockHint(u)}</small>`:`<div class="row"><input type="number" min="1" value="1" id="qty_${u}"><button class="act" onclick="train('${u}')">${t('barracks_train_btn')}</button></div>`}
+  ${locked?`<small>🔒 ${t('unit_unlock')}</small>`:`<div class="row"><input type="number" min="1" value="1" id="qty_${u}"><button class="act" onclick="train('${u}')">${t('barracks_train_btn')}</button></div>`}
   <small>${t('barracks_current_troops')} <b>${S.troops[u]||0}</b></small></div>`;
  }
- html+=`</div>${renderResearch()}<h2>${t('barracks_queue_title')}</h2><p><small>${t('queue_one_by_one')}</small></p>`;
+ html+=`</div><h2>${t('barracks_queue_title')}</h2><p><small>${t('queue_one_by_one')}</small></p>`;
  if(S.trainQueue.length===0)html+=`<div class="card"><small>${t('barracks_queue_empty')}</small></div>`;
  else html+=`<div style="max-height:420px;overflow-y:auto">${S.trainQueue.map((q,i)=>`<div class="card row"><span>${i+1}. ${unitName(q.unit)} — ${i===0?countdown(q.end):new Date(q.end).toLocaleTimeString(LANG==='en'?'en-US':'pt-BR')}</span>${i===0?`<button class="act skip" onclick="skipTrain(0)">${t('skip_btn')}</button>`:''}</div>`).join('')}</div>`;
  return html;
@@ -885,7 +773,7 @@ function validAttackUnits(sp,sw,cat){
 }
 function train(u){
  let info=CFG.units[u],input=document.getElementById('qty_'+u);
- if(!input||!info||!canTrain(u))return;
+ if(!input||!info||S.buildings.barracks<1||(u==='catapult'&&S.buildings.barracks<10))return;
  let qty=Number(input.value);
  if(!Number.isSafeInteger(qty)||qty<1||qty>1000){showToast(feedback('quantity'));return;}
  let totalCost={wood:info.cost.wood*qty,clay:info.cost.clay*qty,iron:info.cost.iron*qty};
@@ -905,30 +793,14 @@ function skipTrain(i){
  tick();render();
 }
 
-const MAP_KM={width:260,height:180};
-const START_SECTORS={north:[100,260,600,720],south:[100,260,1180,1700],east:[1500,2480,700,1420],west:[100,960,660,1420],center:[700,1060,720,1160]};
-function worldSpawns(){try{return JSON.parse(localStorage.getItem('nordic_spawns_'+WORLD.code)||'{}');}catch{return {};}}
-function spawnAvailable(p,occupied){return occupied.every(o=>Math.abs(p.x-o.x)>=250||Math.abs(p.y-o.y)>=250);}
-function claimSpawn(profile,sector,relocate=false){let spawns=worldSpawns(),key=profile.toLocaleLowerCase(),old=spawns[key];if(old&&!relocate)return old;
- let all=[...createWorldVillages().map(v=>({x:v.x,y:v.y})),...Object.entries(spawns).filter(([k])=>k!==key).map(([,v])=>v)];let bounds=START_SECTORS[sector]||START_SECTORS.center;
- let candidates=[];for(let y=bounds[2];y<=bounds[3];y+=25)for(let x=bounds[0];x<=bounds[1];x+=25){let p={x,y};if(spawnAvailable(p,all))candidates.push(p);}
- if(!candidates.length){for(let y=120;y<=1680;y+=25)for(let x=100;x<=2480;x+=25){let p={x,y};if(spawnAvailable(p,all))candidates.push(p);}}
- if(!candidates.length)return null;
- let index=Math.floor(Math.random()*candidates.length),chosen={...candidates[index],sector};spawns[key]=chosen;localStorage.setItem('nordic_spawns_'+WORLD.code,JSON.stringify(spawns));return chosen;
-}
-function relocateVillage(){if(S.relocated||now()-S.joinedAt>7*86400000){showToast('A mudança de local só pode ocorrer uma vez nos primeiros sete dias.');return;}
- let sector=document.getElementById('relocateSector')?.value||'center',place=claimSpawn(ACTIVE_PROFILE,sector,true);if(!place){showToast('Não há uma área livre para essa aldeia.');return;}
- S.homePos={x:place.x,y:place.y};S.homeSector=sector;S.relocated=true;mapCamera.x=place.x;mapCamera.y=place.y;save();render();}
-function kmCoord(p){return `(${Math.round(p.x/10)}, ${Math.round(p.y/10)})`;}
-
 const SLOT_POS=[[450,1550],[1580,1150],[2040,1600],[2180,480]];
 let mapDetailSignature='';
 function detailSignature(){return JSON.stringify([openPlot,S.activeVillageId,Object.keys(S.ownedVillages),S.attacks.map(a=>[a.target,a.arriveEnd]),S.troops,S.buildings.barracks]);}
 let openPlot=null,mapCamera={x:550,y:850,zoom:1},mapDrag=null,mapResizeObserver=null;
 function renderVillageSwitcher(){ensureKingdom();return `<div class="card row"><b>🏘️ ${Object.keys(S.ownedVillages).length} aldeia(s) sob seu controle</b><label>Governar <select aria-label="Aldeia ativa" onchange="switchVillage(this.value)">${Object.keys(S.ownedVillages).map(id=>`<option value="${id}" ${id===S.activeVillageId?'selected':''}>${escapeHTML(id==='home'?'Aldeia Principal':S.villages.find(v=>settlementKey(v.id)===id).name)}</option>`).join('')}</select></label></div>`;}
 function togglePlot(k){
- if(k==='home'){showToast('Aldeia Principal · '+kmCoord(S.homePos||HOME_POS)+' km');switchVillage('home');return;}
- if(k?.startsWith('b')&&S.ownedVillages[settlementKey(Number(k.slice(1)))]){let v=S.villages.find(x=>x.id===Number(k.slice(1)));showToast(v.name+' · '+kmCoord(v)+' km');switchVillage(settlementKey(Number(k.slice(1))));return;}
+ if(k==='home'){switchVillage('home');return;}
+ if(k?.startsWith('b')&&S.ownedVillages[settlementKey(Number(k.slice(1)))]){switchVillage(settlementKey(Number(k.slice(1))));return;}
  openPlot=openPlot===k?null:k;render();
 }
 function worldTerrainSVG(){
@@ -942,14 +814,13 @@ function worldTerrainSVG(){
  ${trees.map(([x,y])=>`${pineSVG(x,y,2.5)}${pineSVG(x+30,y+25,2)}${pineSVG(x-33,y+21,1.8)}`).join('')}
  <g fill="#d9ded0" font-family="Georgia" font-size="28" opacity=".65"><text x="350" y="80">Terras do Clã</text><text x="1690" y="65">Cordilheira da Aurora</text><text x="1830" y="1740">Terras do Trovão</text><text transform="translate(1260 550) rotate(90)">Fiorde dos Ancestrais</text></g></svg>`;
 }
-function mapMarker(key,name,x,y,owned,level){return `<button type="button" class="world-marker ${owned?'owned':''}" data-key="${key}" data-x="${x}" data-y="${y}" aria-label="${escapeHTML(name)}${owned?' — governar':' — nível '+level} · coordenadas ${kmCoord({x,y})}" onclick="if(!mapDrag?.moved)togglePlot('${key}')">${villageIconSVG(45)}<span class="marker-name">${escapeHTML(name)}</span><span class="marker-level">${owned?'⚑ Sua aldeia':'Nível '+level}</span><span class="marker-coord">${kmCoord({x,y})} km</span></button>`;}
+function mapMarker(key,name,x,y,owned,level){return `<button type="button" class="world-marker ${owned?'owned':''}" data-key="${key}" data-x="${x}" data-y="${y}" aria-label="${escapeHTML(name)}${owned?' — governar':' — nível '+level}" onclick="if(!mapDrag?.moved)togglePlot('${key}')">${villageIconSVG(45)}<span class="marker-name">${escapeHTML(name)}</span><span class="marker-level">${owned?'⚑ Sua aldeia':'Nível '+level}</span></button>`;}
 function renderMap(){
  ensureKingdom();
- let markers=mapMarker('home','Aldeia Principal',(S.homePos||HOME_POS).x,(S.homePos||HOME_POS).y,true,1);
+ let markers=mapMarker('home','Aldeia Principal',HOME_POS.x,HOME_POS.y,true,1);
  for(const v of S.villages)markers+=mapMarker('b'+v.id,v.name,v.x,v.y,!!S.ownedVillages[settlementKey(v.id)],v.level);
- let people=Object.entries(worldSpawns()).filter(([name])=>name!==ACTIVE_PROFILE.toLocaleLowerCase());for(let i=0;i<people.length;i++){let [name,p]=people[i];markers+=mapMarker('h'+i,name,p.x,p.y,false,'Jogador');}
- for(const p of Object.values(mpPlayers)){if(p.name!==myId&&p.pos&&!people.some(([name])=>name===p.name.toLocaleLowerCase()))markers+=mapMarker('h'+people.length,p.name,p.pos.x,p.pos.y,false,'Jogador');}
- return `${renderVillageSwitcher()}<div class="card row"><span>🧭 Mundo: 260 × 180 km · 1 unidade = 1 km · território inicial 25 × 25 km<br><small>Setor ${S.homeSector||'centro'} · passe o mouse sobre as vilas ou toque nelas para ver as coordenadas.</small></span>${!S.relocated&&now()-S.joinedAt<7*86400000?`<label>Mudar região uma vez nos primeiros sete dias <select id="relocateSector">${Object.keys(START_SECTORS).map(k=>`<option value="${k}">${k}</option>`).join('')}</select> <button class="act" onclick="relocateVillage()">Mudar aldeia</button></label>`:''}</div><div class="map-toolbar"><h2>🧭 Fiorde dos Ancestrais</h2><div><button class="act" onclick="zoomWorldMap(1.25)" aria-label="Ampliar mapa">＋</button> <button class="act" onclick="zoomWorldMap(.8)" aria-label="Reduzir mapa">−</button> <button class="act" onclick="centerWorldMap()">Minha aldeia</button> <button class="act" onclick="fitWorldMap()">Ver mundo</button></div></div><p class="tag">Arraste para explorar · Role sobre o mapa para ajustar o zoom · Clique nas suas aldeias para governar.</p>
+ for(let i=0;i<4;i++){let p=Object.values(mpPlayers).find(p=>p.slot===i&&p.name!==myId);if(p)markers+=mapMarker('p'+i,p.name,...SLOT_POS[i],false,'PvP');}
+ return `${renderVillageSwitcher()}<div class="map-toolbar"><h2>🧭 Fiorde dos Ancestrais</h2><div><button class="act" onclick="zoomWorldMap(1.25)" aria-label="Ampliar mapa">＋</button> <button class="act" onclick="zoomWorldMap(.8)" aria-label="Reduzir mapa">−</button> <button class="act" onclick="centerWorldMap()">Minha aldeia</button> <button class="act" onclick="fitWorldMap()">Ver mundo</button></div></div><p class="tag">Arraste para explorar · Role sobre o mapa para ajustar o zoom · Clique nas suas aldeias para governar.</p>
  <div id="world-viewport" tabindex="0" aria-label="Mapa interativo. Use as setas para mover e mais ou menos para ampliar."><div id="world-terrain">${worldTerrainSVG()}</div><div id="world-markers">${markers}</div><div class="map-compass" aria-hidden="true">↑ N</div><div id="map-scale" class="map-scale"></div></div>
  <div class="row"><small>⚑ Suas aldeias · Nível = força e desenvolvimento da vila</small><small id="kingdom-count">${Object.keys(S.ownedVillages).length}/14 aldeias controladas</small></div>
  <div id="map-detail">${renderMapDetail()}</div>`;
@@ -959,20 +830,19 @@ function renderMapDetail(){
  if(!openPlot)return '<div class="card"><small>Selecione uma vila para ver tropas, muralha, construções, recursos e tempo de viagem. Os recursos de cada aldeia são independentes.</small></div>';
  if(openPlot[0]==='b'){
   let v=S.villages.find(x=>x.id===Number(openPlot.slice(1)));if(!v)return '';
-  if(S.ownedVillages[settlementKey(v.id)])return `<div class="card"><b>⚑ ${escapeHTML(v.name)} ${kmCoord(v)} km</b> está sob seu controle. <button class="act" onclick="switchVillage('v${v.id}')">Governar aldeia</button></div>`;
+  if(S.ownedVillages[settlementKey(v.id)])return `<div class="card"><b>⚑ ${escapeHTML(v.name)}</b> está sob seu controle. <button class="act" onclick="switchVillage('v${v.id}')">Governar aldeia</button></div>`;
   let atkInProg=S.attacks.find(a=>a.target===v.id),def=combatPower(v.troops,'def',0)*defenseMultiplier(v.buildings,v.towers);
-  html+=`<div class="card"><h2>${escapeHTML(v.name)} <span class="tag">Nível ${v.level} · ${kmCoord(v)} km</span></h2><div class="row"><span>⚔️ ${Object.entries(v.troops).map(([u,n])=>`${unitName(u)}: <b>${fmt(n)}</b>`).join(' · ')}</span></div><div class="row"><span>🛡️ Muralha ${v.buildings.wall} · Defesa total ${fmt(def)}</span><small>Torres: ${v.towers.filter(n=>n>0).length}</small></div><div class="row"><span>🪵 ${fmt(v.res.wood)} · 🧱 ${fmt(v.res.clay)} · ⛏️ ${fmt(v.res.iron)}</span><small>Viagem de ${escapeHTML(activeVillageName())}: ${countdown(now()+travelSeconds(v)*1000)}</small></div><details><summary>Construções que você conquistará</summary>${Object.entries(v.buildings).map(([b,l])=>`<div class="row"><small>${buildName(b)}</small><b>Nível ${l}</b></div>`).join('')}</details><p class="tag">Derrube a muralha e elimine a defesa antes de conquistar. A vitória transfere a aldeia inteira para você. Os sobreviventes ficam na nova aldeia; os recursos dela permanecem lá.</p>`;
-  html+=atkInProg?`<div class="row"><b>⚔️ Ataque a caminho — <span data-arrival="${atkInProg.arriveEnd}">${countdown(atkInProg.arriveEnd)}</span></b><button class="act skip" onclick="skipAttack(${v.id})">${t('skip_btn')}</button></div>`:`<div class="row">${ALL_UNITS.filter(u=>S.troops[u]>0).map(u=>`<label>${unitName(u)} (${fmt(S.troops[u]||0)}) <input type="number" min="0" step="1" value="0" id="send_${u}_${v.id}" aria-label="${unitName(u)} para o ataque"></label>`).join('')}<label>Alvo das catapultas <select id="target_${v.id}">${Object.keys(v.buildings).filter(b=>b!=='wall').map(b=>`<option value="${b}">${buildName(b)}</option>`).join('')}</select></label><button class="act" onclick="sendAttack(${v.id})">Atacar para conquistar</button></div>`;
+  html+=`<div class="card"><h2>${escapeHTML(v.name)} <span class="tag">Nível ${v.level}</span></h2><div class="row"><span>⚔️ ${Object.entries(v.troops).map(([u,n])=>`${unitName(u)}: <b>${fmt(n)}</b>`).join(' · ')}</span></div><div class="row"><span>🛡️ Muralha ${v.buildings.wall} · Defesa total ${fmt(def)}</span><small>Torres: ${v.towers.filter(n=>n>0).length}</small></div><div class="row"><span>🪵 ${fmt(v.res.wood)} · 🧱 ${fmt(v.res.clay)} · ⛏️ ${fmt(v.res.iron)}</span><small>Viagem de ${escapeHTML(activeVillageName())}: ${countdown(now()+travelSeconds(v)*1000)}</small></div><details><summary>Construções que você conquistará</summary>${Object.entries(v.buildings).map(([b,l])=>`<div class="row"><small>${t('build_'+b+'_name')}</small><b>Nível ${l}</b></div>`).join('')}</details><p class="tag">A vitória transfere a aldeia inteira para você. Os sobreviventes ficam na nova aldeia; os recursos dela permanecem lá.</p>`;
+  html+=atkInProg?`<div class="row"><b>⚔️ Ataque a caminho — <span data-arrival="${atkInProg.arriveEnd}">${countdown(atkInProg.arriveEnd)}</span></b><button class="act skip" onclick="skipAttack(${v.id})">${t('skip_btn')}</button></div>`:`<div class="row">${['spear','sword','catapult'].filter(u=>u!=='catapult'||S.buildings.barracks>=10||S.troops.catapult>0).map(u=>`<label>${unitName(u)} (${fmt(S.troops[u]||0)}) <input type="number" min="0" step="1" value="0" id="send_${u}_${v.id}" aria-label="${unitName(u)} para o ataque"></label>`).join('')}<button class="act" onclick="sendAttack(${v.id})">Atacar para conquistar</button></div>`;
   html+='</div>';
  }
- if(openPlot&&openPlot[0]==='h'){let p=Object.entries(worldSpawns()).filter(([name])=>name!==ACTIVE_PROFILE.toLocaleLowerCase())[Number(openPlot.slice(1))];if(p)html+=`<div class="card"><b>⚑ ${escapeHTML(p[0])}</b> · ${kmCoord(p[1])} km · aldeia de outro perfil.</div>`;}
  if(openPlot&&openPlot[0]==='p'){
   let i=parseInt(openPlot.slice(1));
   let occ=Object.values(mpPlayers).find(p=>p.slot===i);
   if(occ){
    let res=occ.res||{wood:0,clay:0,iron:0};
    let outgoing=Object.values(mpAttacksCache||{}).find(a=>a.from===myId&&a.to===occ.name&&!a.resolved&&a.arriveEnd>now());
-   html+=`<div class="card"><b>${escapeHTML(occ.name)} · ${kmCoord({x:SLOT_POS[i][0],y:SLOT_POS[i][1]})} km</b><br><small>${t('map_last_sync')} ${unitName('spear')} ${occ.troops?.spear||0}, ${unitName('sword')} ${occ.troops?.sword||0}</small><br><small>${t('map_approx_res')} 🪵${Math.round(res.wood)} 🧱${Math.round(res.clay)} ⛏️${Math.round(res.iron)}</small>`;
+   html+=`<div class="card"><b>${occ.name}</b><br><small>${t('map_last_sync')} ${unitName('spear')} ${occ.troops?.spear||0}, ${unitName('sword')} ${occ.troops?.sword||0}</small><br><small>${t('map_approx_res')} 🪵${Math.round(res.wood)} 🧱${Math.round(res.clay)} ⛏️${Math.round(res.iron)}</small>`;
    if(outgoing){
     html+=`<div class="row"><small>${t('map_your_attack_en_route')} ${countdown(outgoing.arriveEnd)}</small></div>`;
    } else {
@@ -1026,14 +896,11 @@ function sendAttack(id){
  ensureKingdom();let v=S.villages.find(x=>x.id===id);
  if(!v||S.ownedVillages[settlementKey(id)]){showToast('Esta aldeia já está sob seu controle.');return;}
  if(S.attacks.some(a=>a.target===id)){showToast('Já existe um ataque desta aldeia a caminho desse alvo.');return;}
- let units={};for(const u of ALL_UNITS)units[u]=Number(document.getElementById('send_'+u+'_'+id)?.value||0);
- if(Object.values(units).some(n=>!Number.isSafeInteger(n)||n<0)){showToast(feedback('quantity'));return;}
- if(ALL_UNITS.some(u=>units[u]>(S.troops[u]||0))){showToast(feedback('troops'));return;}
- if(!ALL_UNITS.some(u=>units[u])){showToast(feedback('empty'));return;}
- const bonus=combatBonus(),upgrades={...S.research.upgrades};for(const u of ALL_UNITS)S.troops[u]-=units[u];S.stats.attacksSent++;
- S.attacks.push({target:id,origin:S.activeVillageId,targetBuilding:document.getElementById('target_'+id)?.value||'main',units,bonus,upgrades,sentAt:now(),arriveEnd:now()+travelSeconds(v)*1000});save();render();
+ let sp=Number(document.getElementById('send_spear_'+id)?.value||0),sw=Number(document.getElementById('send_sword_'+id)?.value||0),cat=Number(document.getElementById('send_catapult_'+id)?.value||0);
+ if(!validAttackUnits(sp,sw,cat))return;
+ const bonus=combatBonus();S.troops.spear-=sp;S.troops.sword-=sw;S.troops.catapult-=cat;S.stats.attacksSent++;
+ S.attacks.push({target:id,origin:S.activeVillageId,units:{spear:sp,sword:sw,catapult:cat},bonus,sentAt:now(),arriveEnd:now()+travelSeconds(v)*1000});save();render();
 }
-
 function skipAttack(id){let a=S.attacks.find(x=>x.target===id);if(a)a.arriveEnd=now();tick();render();}
 
 function renderReports(){
@@ -1060,7 +927,7 @@ function renderOldReport(r){
    <small>${t('report_sent')} ${sentStr}</small><br>
    <small>${t('report_losses')} ${lostStr||t('report_none')}</small><br>
    <small>${t('report_atk_power')} ${Math.round(r.atk)} ${t('report_vs_def')} ${Math.round(r.enemyDef)}</small><br>
-   ${r.damage?`<small>🧱 Danos: ${Object.entries(r.damage).map(([b,n])=>`${buildName(b)} −${n}`).join(', ')||'nenhum'} · muralha restante ${r.wallRemaining}</small><br>`:''}${r.conquered?`<small>🏴 Aldeia conquistada por ${escapeHTML(r.source)}. Recursos mantidos na nova aldeia: 🪵${fmt(r.retained.wood)} 🧱${fmt(r.retained.clay)} ⛏️${fmt(r.retained.iron)}. Sobreviventes guarnecem a nova aldeia.</small><br><button class="act" onclick="switchVillage('v${r.targetId}')">Governar aldeia</button>`:r.win?`<small>${t('report_loot')} ${lootStr}</small>`:''}
+   ${r.conquered?`<small>🏴 Aldeia conquistada por ${escapeHTML(r.source)}. Recursos mantidos na nova aldeia: 🪵${fmt(r.retained.wood)} 🧱${fmt(r.retained.clay)} ⛏️${fmt(r.retained.iron)}. Sobreviventes guarnecem a nova aldeia.</small><br><button class="act" onclick="switchVillage('v${r.targetId}')">Governar aldeia</button>`:r.win?`<small>${t('report_loot')} ${lootStr}</small>`:''}
   </div>`;
 }
 
@@ -1092,7 +959,7 @@ async function mpEnsureJoined(){
 async function mpSync(){
  if(!mpReady||!myId||!S) return;
  let players=(await wsGet('world_players'))||{};
- players[myId]=inVillage('home',()=>({name:myId,slot:mySlot,res:S.res,buildings:S.buildings,troops:S.troops,stats:S.stats,happiness:happiness(),food:S.food,towers:S.towers,pos:S.homePos,updated:now()}));
+ players[myId]=inVillage('home',()=>({name:myId,slot:mySlot,res:S.res,buildings:S.buildings,troops:S.troops,stats:S.stats,happiness:happiness(),food:S.food,towers:S.towers,updated:now()}));
  await wsSet('world_players',players);
  mpPlayers=players;
 }
@@ -1129,9 +996,7 @@ async function mpResolveAttack(a){
  let def=players[a.to]||{troops:{spear:0,sword:0},res:{wood:0,clay:0,iron:0}};
  let atk=combatPower(a.units,'atk',a.bonus||0);
  let defp=combatPower(def.troops||{},'def',combatBonus(def.happiness||0))*defenseMultiplier(def.buildings||{},def.towers||[]);
- let wallHit=Math.max(0,Math.floor(((a.units.catapult||0)/25)+((a.units.ram||0)/12)));
- let breach=(def.buildings?.wall||0)<=wallHit;let win=atk>defp&&breach;
- if(a.to===myId&&S&&atk>defp&&S.buildings.wall>0){inVillage('home',()=>{let hit=Math.max(1,wallHit);S.rebuildDebt ||= {};S.rebuildDebt.wall=(S.rebuildDebt.wall||0)+Math.min(S.buildings.wall,hit);S.buildings.wall=Math.max(0,S.buildings.wall-hit);});save();}
+ let win=atk>defp;
  let lossRatio=win?Math.min(0.3,defp/(atk+1)):1;
  let lost={}; for(let u in a.units) lost[u]=Math.round(a.units[u]*lossRatio);
  let loot={wood:0,clay:0,iron:0};
@@ -1348,7 +1213,7 @@ function buildingPreviewCurrent(b){
  if(b==='main'){ let sp=Math.round((1+(lvl-1)*CFG.mainSpeedPerLevel)*100); return `<b>${sp}% · 👥${farmCap()}</b>`; }
  if(b==='farm') return `<b>${farmCap()}</b>`;
  if(b==='meat') return `<b>${(lvl?CFG.foodBase*Math.pow(CFG.growth,lvl-1):0).toFixed(2)} ${t('food_label')}/s</b>`;
- if(b==='tavern') return `<b>+${(lvl*2.5).toFixed(1)}% ${t('happiness_label')}</b>`;
+ if(b==='tavern') return `<b>+${lvl*10}% ${t('happiness_label')}</b>`;
  if(b==='wall') return `<b>🛡️ +${lvl*10}%</b>`;
  if(b==='barracks') return `<b>${lvl>0?'✔️':'—'}</b>`;
  return '<b>—</b>';
@@ -1374,7 +1239,7 @@ function renderWorldStats(){
 }
 function renderWorldAggregate(){
  if(S){ensureKingdom();storeActiveVillage();}let all=mpReady?Object.values(mpPlayers):(S?Object.values(S.ownedVillages):[]);
- let total = {res:{wood:0,clay:0,iron:0}, troopsTrained:{}, troopsLost:{}, attacksSent:0, attacksReceived:0, players: mpReady?all.length:(S?1:0)};
+ let total = {res:{wood:0,clay:0,iron:0}, troopsTrained:{spear:0,sword:0,catapult:0}, troopsLost:{spear:0,sword:0,catapult:0}, attacksSent:0, attacksReceived:0, players: mpReady?all.length:(S?1:0)};
  all.forEach(p=>{
   if(p.res) ['wood','clay','iron'].forEach(r=>total.res[r]+=p.res[r]||0);
   let s=p.stats||{};
@@ -1413,7 +1278,7 @@ function worldCode(){let bytes=new Uint8Array(5);if(globalThis.crypto?.getRandom
 async function createWorld(){
  let name=document.getElementById('worldName')?.value.trim(),player=document.getElementById('newPlayer')?.value.trim();
  if(!name||!player){menuMessage=t('menu_error');renderLoginScreen();return;}
- window.__selectedStartSector=document.getElementById('startSectorNew')?.value||'center';let code=worldCode();
+ let code=worldCode();
  let meta={code,name:name.slice(0,32),owner:player.slice(0,20),created:now()};
  await rawSharedSet('nordic_meta_'+code,meta);
  rememberWorld(meta);WORLD=meta;
@@ -1423,7 +1288,7 @@ async function joinWorld(){
  let code=(document.getElementById('worldCode')?.value||'').trim().toUpperCase().replace(/\s+/g,'');
  let player=(document.getElementById('joinPlayer')?.value||'').trim();
  if(!/^N-[A-Z0-9]{5}$/.test(code)||!player){menuMessage=t('menu_missing');renderLoginScreen();return;}
- window.__selectedStartSector=document.getElementById('startSectorJoin')?.value||'center';let meta=await findWorld(code);
+ let meta=await findWorld(code);
  if(!meta){menuMessage=t('menu_missing');renderLoginScreen();return;}
  rememberWorld(meta);WORLD=meta;
  await startGame(player.slice(0,20));
@@ -1441,11 +1306,11 @@ function renderLoginScreen(){
  } else if(menuView==='create'){
   body=`<div class="menu-fields"><label>${t('menu_world_name')}<input type="text" id="worldName" maxlength="32" placeholder="Fiorde de Midgard"></label>
   <label>${t('menu_player')}<input type="text" id="newPlayer" maxlength="20" placeholder="${t('login_placeholder')}"></label></div>
-  <label>Região inicial <select id="startSectorNew">${Object.keys(START_SECTORS).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></label><button class="act" onclick="createWorld()">${t('menu_create')}</button>${back}`;
+  <button class="act" onclick="createWorld()">${t('menu_create')}</button>${back}`;
  } else if(menuView==='join'){
   body=`<div class="menu-fields"><label>${t('menu_code')}<input type="text" id="worldCode" maxlength="9" placeholder="N-ABCDE" style="text-transform:uppercase"></label>
   <label>${t('menu_player')}<input type="text" id="joinPlayer" maxlength="20" placeholder="${t('login_placeholder')}"></label></div>
-  <label>Região inicial <select id="startSectorJoin">${Object.keys(START_SECTORS).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></label><button class="act" onclick="joinWorld()">${t('menu_enter')}</button>${back}`;
+  <button class="act" onclick="joinWorld()">${t('menu_enter')}</button>${back}`;
  } else if(menuView==='profile'&&WORLD){
   let profiles=listProfiles();
   body=`<h2>🌄 ${escapeHTML(WORLD.name)} · ${WORLD.code}</h2><div class="menu-fields"><label>${t('menu_player')}<input type="text" id="loginName" maxlength="20" placeholder="${t('login_placeholder')}"></label></div>
@@ -1454,13 +1319,13 @@ function renderLoginScreen(){
  }
  el.innerHTML=title+body+(menuMessage?`<p role="alert" style="color:#f4b5a1">${escapeHTML(menuMessage)}</p>`:'')+`<p class="menu-note">${t('menu_local')}</p>`;
 }
-function doLogin(){window.__selectedStartSector='center';let name=document.getElementById('loginName')?.value.trim();if(name)startGame(name);}
+function doLogin(){let name=document.getElementById('loginName')?.value.trim();if(name)startGame(name);}
 function quickLogin(name){startGame(name);}
 async function startGame(name){
  name=(name||'').trim().slice(0,20);
  if(!name||!WORLD)return;
  ACTIVE_PROFILE=name;myId=name;setActiveProfile(name);
- S=load(name);if(!localStorage.getItem(profileKey(name))){let sector=window.__selectedStartSector||'center',place=claimSpawn(name,sector);if(place){S.homePos={x:place.x,y:place.y};S.homeSector=sector;}}else if(!worldSpawns()[name.toLocaleLowerCase()]){let spawns=worldSpawns();spawns[name.toLocaleLowerCase()]={...S.homePos,sector:S.homeSector};localStorage.setItem('nordic_spawns_'+WORLD.code,JSON.stringify(spawns));}ensureKingdom();mapCamera={x:S.homePos.x,y:S.homePos.y,zoom:1};openPlot=null;
+ S=load(name);ensureKingdom();mapCamera={x:550,y:850,zoom:1};openPlot=null;
  document.getElementById('loginScreen').style.display='none';
  document.getElementById('gameRoot').style.display='block';
  await fetchWorldSettings();
